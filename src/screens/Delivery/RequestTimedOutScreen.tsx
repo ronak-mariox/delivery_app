@@ -17,7 +17,7 @@ export function RequestTimedOutScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     // The countdown expired without a response — treat it like a soft reject so this

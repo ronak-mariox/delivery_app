@@ -1,13 +1,23 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {Alert, RefreshControl, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useFocusEffect} from '@react-navigation/native';
 import {RootStackParamList} from '../../navigation/types';
-import {Badge, Button, Card, Icon, ProgressBar, Screen, StatTile, ToggleSwitch} from '../../components';
+import {Badge, Button, Card, Icon, Loader, ProgressBar, Screen, StatTile, ToggleSwitch} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
 import {api, getApiErrorMessage} from '../../services/api';
-import {useDriverAuth} from '../../context/DriverAuthContext';
+import {
+  EarningsSummary,
+  Incentive,
+  PerformanceSummary,
+  getEarningsSummary,
+  getPerformanceSummary,
+  getUnreadNotificationCount,
+  listIncentives,
+} from '../../services/driverApi';
+import {driverName, useDriverAuth} from '../../context/DriverAuthContext';
 import {useOrders} from '../../context/OrdersContext';
+import {routeForDriver} from '../../utils/driverRouting';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -21,23 +31,49 @@ interface HomeSummary {
 
 function greetingForNow(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
+  if (hour < 12) {return 'Good morning';}
+  if (hour < 17) {return 'Good afternoon';}
   return 'Good evening';
 }
 
 export function HomeScreen({navigation}: Props) {
   const {driver, refreshDriver} = useDriverAuth();
-  const {availableOrders, activeOrders, historyOrders, refreshAvailable, refreshActive, refreshHistory} = useOrders();
+  const {
+    availableOrders,
+    activeOrders,
+    historyOrders,
+    refreshAvailable,
+    refreshActive,
+    refreshHistory,
+    dismissOrder,
+    isOrderDismissed,
+    lostOrder,
+    clearLostOrder,
+  } = useOrders();
 
   const [online, setOnline] = useState(!!driver?.isOnline);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [summary, setSummary] = useState<HomeSummary | null>(null);
+  const [weekSummary, setWeekSummary] = useState<EarningsSummary | null>(null);
+  const [performance, setPerformance] = useState<PerformanceSummary | null>(null);
+  const [incentive, setIncentive] = useState<Incentive | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [focused, setFocused] = useState(false);
 
-  const lastPromptedOrderIdRef = useRef<string | null>(null);
   const activeOrder = activeOrders[0];
   const lastDelivery = historyOrders[0];
+  const isActiveAccount = driver?.status === 'active';
+
+  // Pending/rejected/suspended accounts must never see the online toggle — send them to
+  // the matching status screen instead.
+  useEffect(() => {
+    if (!driver || isActiveAccount) {
+      return;
+    }
+    const target = routeForDriver(driver);
+    navigation.reset({index: 0, routes: [{name: target.name, params: target.params} as never]});
+  }, [driver, isActiveAccount, navigation]);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -48,43 +84,69 @@ export function HomeScreen({navigation}: Props) {
     }
   }, []);
 
+  const loadSecondary = useCallback(async () => {
+    const [week, perf, incentives, unread] = await Promise.allSettled([
+      getEarningsSummary('week'),
+      getPerformanceSummary(),
+      listIncentives(),
+      getUnreadNotificationCount(),
+    ]);
+    if (week.status === 'fulfilled') {setWeekSummary(week.value);}
+    if (perf.status === 'fulfilled') {setPerformance(perf.value);}
+    if (incentives.status === 'fulfilled') {setIncentive(incentives.value.find((i) => i.progress.status === 'in_progress') ?? incentives.value[0] ?? null);}
+    if (unread.status === 'fulfilled') {setUnreadCount(unread.value);}
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      setFocused(true);
       (async () => {
         const latest = await refreshDriver();
-        if (!cancelled && latest) setOnline(!!latest.isOnline);
+        if (!cancelled && latest) {setOnline(!!latest.isOnline);}
       })();
       loadSummary();
+      loadSecondary();
       refreshActive().catch(() => {});
       refreshHistory('completed').catch(() => {});
       return () => {
         cancelled = true;
+        setFocused(false);
       };
-    }, [refreshDriver, loadSummary, refreshActive, refreshHistory]),
+    }, [refreshDriver, loadSummary, loadSecondary, refreshActive, refreshHistory]),
   );
 
-  // Backend is pull-based (no push notifications for new orders), so simulate real-time
-  // incoming-order UX with a short poll while online.
+  // Backend is pull-based (no push), so poll for offers while online — but only while this
+  // screen is focused so a request screen isn't interrupted by the next poll.
   useEffect(() => {
-    if (!online) return;
+    if (!online || !focused || !isActiveAccount) {return;}
     refreshAvailable().catch(() => {});
     const interval = setInterval(() => {
       refreshAvailable().catch(() => {});
       refreshActive().catch(() => {});
     }, AVAILABLE_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [online, refreshAvailable, refreshActive]);
+  }, [online, focused, isActiveAccount, refreshAvailable, refreshActive]);
 
-  // Auto-surface the next available order as a full-screen request, like the real apps this
-  // mirrors — but only when there's no delivery already in progress, and only once per order.
   useEffect(() => {
-    if (!online || activeOrders.length > 0) return;
-    const next = availableOrders[0];
-    if (!next || lastPromptedOrderIdRef.current === next.id) return;
-    lastPromptedOrderIdRef.current = next.id;
+    if (!lostOrder || !focused) {return;}
+    clearLostOrder();
+    if (lostOrder.order?.status === 'cancelled') {
+      navigation.navigate('OrderCancelledByCustomer', {orderId: lostOrder.orderId});
+    } else {
+      Alert.alert('Order no longer assigned', 'This delivery was removed from your active orders.');
+    }
+  }, [lostOrder, focused, clearLostOrder, navigation]);
+
+  // Auto-surface the next available order as a full-screen request — only when there's no
+  // delivery in progress, and never for an offer the driver already saw or dismissed.
+  useEffect(() => {
+    if (!online || !focused || activeOrders.length > 0) {return;}
+    const next = availableOrders.find((o) => !isOrderDismissed(o.id));
+    if (!next) {return;}
+    dismissOrder(next.id);
     navigation.navigate('NewOrderRequest', {orderId: next.id});
-  }, [online, availableOrders, activeOrders, navigation]);
+  }, [online, focused, availableOrders, activeOrders, navigation, dismissOrder, isOrderDismissed]);
 
   const handleToggleOnline = useCallback(
     async (next: boolean) => {
@@ -107,6 +169,7 @@ export function HomeScreen({navigation}: Props) {
     try {
       await Promise.all([
         loadSummary(),
+        loadSecondary(),
         refreshActive().catch(() => {}),
         refreshHistory('completed').catch(() => {}),
         online ? refreshAvailable().catch(() => {}) : Promise.resolve(),
@@ -114,14 +177,27 @@ export function HomeScreen({navigation}: Props) {
     } finally {
       setRefreshing(false);
     }
-  }, [loadSummary, refreshActive, refreshHistory, refreshAvailable, online]);
+  }, [loadSummary, loadSecondary, refreshActive, refreshHistory, refreshAvailable, online]);
 
   const addressLine = (() => {
-    const addr = driver?.address as {area?: string; city?: string; line1?: string} | undefined;
-    if (addr?.area && addr?.city) return `${addr.area}, ${addr.city}`;
-    if (addr?.city) return addr.city;
+    const addr = driver?.address;
+    if (addr?.area && addr?.city) {return `${addr.area}, ${addr.city}`;}
+    if (addr?.city) {return addr.city;}
     return 'Location not set';
   })();
+
+  const incentiveRemaining = incentive ? Math.max(0, incentive.targetDeliveries - incentive.progress.currentProgress) : 0;
+  const incentiveProgress = incentive && incentive.targetDeliveries > 0 ? Math.min(1, incentive.progress.currentProgress / incentive.targetDeliveries) : 0;
+  const ratingLabel = performance?.rating != null ? performance.rating.toFixed(2) : '—';
+  const acceptanceLabel = performance ? `${performance.acceptanceRate}%` : '—';
+
+  if (!driver || !isActiveAccount) {
+    return (
+      <Screen backgroundColor={colors.background} edges={['top', 'bottom']}>
+        <Loader />
+      </Screen>
+    );
+  }
 
   return (
     <Screen
@@ -138,7 +214,7 @@ export function HomeScreen({navigation}: Props) {
             </View>
             <View>
               <Text style={[styles.greeting, {color: online ? 'rgba(255,255,255,0.7)' : colors.textMuted}]}>{greetingForNow()}</Text>
-              <Text style={styles.name}>{driver?.fullName ?? 'Driver'}</Text>
+              <Text style={styles.name}>{driverName(driver)}</Text>
             </View>
           </View>
           <View style={styles.headerActions}>
@@ -155,7 +231,7 @@ export function HomeScreen({navigation}: Props) {
               accessibilityLabel="Notifications"
               onPress={() => navigation.navigate('Notifications')}>
               <Icon name="bell" size={18} color={colors.white} />
-              {online && <View style={styles.bellDot} />}
+              {unreadCount > 0 && <View style={styles.bellDot} />}
             </TouchableOpacity>
           </View>
         </View>
@@ -202,7 +278,7 @@ export function HomeScreen({navigation}: Props) {
             style={styles.flex}
             activeOpacity={0.8}
             onPress={() => navigation.navigate(online ? 'CustomerRating' : 'AcceptanceRate')}>
-            <StatTile value={online ? '4.92' : '94%'} label={online ? 'Rating' : 'Acceptance'} valueColor={colors.textPrimary} />
+            <StatTile value={online ? ratingLabel : acceptanceLabel} label={online ? 'Rating' : 'Acceptance'} valueColor={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -235,36 +311,39 @@ export function HomeScreen({navigation}: Props) {
               <Text style={styles.waitingTitle}>{'Waiting for orders…'}</Text>
               <Text style={styles.waitingSubtitle}>Stay in your zone for faster assignments</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.waitingTipsLink}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('StateNoDeliveries')}>
-              <Text style={styles.waitingTipsLinkText}>View tips to get orders faster</Text>
-            </TouchableOpacity>
+            {availableOrders.length > 1 ? (
+              <TouchableOpacity style={styles.waitingTipsLink} activeOpacity={0.7} onPress={() => navigation.navigate('MultipleOrders')}>
+                <Text style={styles.waitingTipsLinkText}>{availableOrders.length} orders available nearby</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.waitingTipsLink} activeOpacity={0.7} onPress={() => navigation.navigate('NoOrdersInZone')}>
+                <Text style={styles.waitingTipsLinkText}>No orders yet? See what you can do</Text>
+              </TouchableOpacity>
+            )}
           </Card>
         )}
 
-        <Card style={styles.incentiveCard} padded={false}>
-        <TouchableOpacity activeOpacity={0.85} style={styles.incentiveCardTouchable} onPress={() => navigation.navigate('Incentives')}>
-          <View style={styles.incentiveHeader}>
-            <View>
-              <Text style={styles.incentiveTitle}>Daily Incentive</Text>
-              <Text style={styles.incentiveSubtitle}>
-                {online ? '4 more → unlock ₹200 bonus' : '4 more deliveries = ₹200 bonus'}
-              </Text>
-            </View>
-            <Badge label={online ? '11/15' : '6 / 10'} tone="primary" />
-          </View>
-          <ProgressBar progress={online ? 11 / 15 : 6 / 10} height={online ? 8 : 6} style={styles.incentiveProgress} />
-          {online && (
-            <View style={styles.incentiveFooterRow}>
-              <Text style={styles.incentiveFooterText}>11 done</Text>
-              <Text style={styles.incentiveFooterHighlight}>4 more for bonus</Text>
-              <Text style={styles.incentiveFooterText}>15 target</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        </Card>
+        {incentive && (
+          <Card style={styles.incentiveCard} padded={false}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.incentiveCardTouchable}
+              onPress={() => navigation.navigate('IncentiveDetail', {incentiveId: incentive.id})}>
+              <View style={styles.incentiveHeader}>
+                <View style={styles.flex}>
+                  <Text style={styles.incentiveTitle}>{incentive.title}</Text>
+                  <Text style={styles.incentiveSubtitle}>
+                    {incentiveRemaining > 0
+                      ? `${incentiveRemaining} more ${incentiveRemaining === 1 ? 'delivery' : 'deliveries'} → ₹${incentive.rewardAmount} bonus`
+                      : `₹${incentive.rewardAmount} bonus unlocked`}
+                  </Text>
+                </View>
+                <Badge label={`${incentive.progress.currentProgress}/${incentive.targetDeliveries}`} tone="primary" />
+              </View>
+              <ProgressBar progress={incentiveProgress} height={online ? 8 : 6} style={styles.incentiveProgress} />
+            </TouchableOpacity>
+          </Card>
+        )}
 
         {!online && (
           <View style={styles.quickGrid}>
@@ -275,16 +354,18 @@ export function HomeScreen({navigation}: Props) {
           </View>
         )}
 
-        {online && (
-          <Card style={styles.weekCard}>
-            <Text style={styles.weekTitle}>This Week</Text>
-            <View style={styles.weekRows}>
-              <WeekRow label="Total Earnings" value="₹6,840" highlight />
-              <WeekRow label="Deliveries Completed" value="62" />
-              <WeekRow label="Avg. Delivery Time" value="24 min" />
-              <WeekRow label="Customer Rating" value="4.92 ★" tone={colors.warning} />
-            </View>
-          </Card>
+        {online && weekSummary && (
+          <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('WeeklyEarnings')}>
+            <Card style={styles.weekCard}>
+              <Text style={styles.weekTitle}>This Week</Text>
+              <View style={styles.weekRows}>
+                <WeekRow label="Total Earnings" value={`₹${weekSummary.totalEarnings}`} highlight />
+                <WeekRow label="Deliveries Completed" value={`${weekSummary.deliveries}`} />
+                {performance && <WeekRow label="On-time Rate" value={`${performance.onTimeRate}%`} />}
+                {performance?.rating != null && <WeekRow label="Customer Rating" value={`${performance.rating.toFixed(2)} ★`} tone={colors.warning} />}
+              </View>
+            </Card>
+          </TouchableOpacity>
         )}
 
         <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('DeliveryHistory')}>
@@ -421,9 +502,6 @@ const styles = StyleSheet.create({
   incentiveTitle: {...typography.labelSemibold, color: colors.textPrimary, fontSize: 13},
   incentiveSubtitle: {...typography.caption, color: colors.textSecondary, marginTop: 2},
   incentiveProgress: {marginTop: 2},
-  incentiveFooterRow: {flexDirection: 'row', justifyContent: 'space-between', marginTop: 2},
-  incentiveFooterText: {...typography.overline, color: colors.textMuted},
-  incentiveFooterHighlight: {...typography.overline, color: colors.primary},
   quickGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
   quickAction: {
     width: '48%',

@@ -3,7 +3,7 @@ import {Alert, StyleSheet, Text, View} from 'react-native';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {DocumentPreviewCard, FormField, Icon, UploadDropzone, WizardFooter, WizardScreen} from '../../components';
+import {DocumentPreviewCard, Icon, UploadDropzone, WizardFooter, WizardScreen} from '../../components';
 import {colors, spacing, typography} from '../../theme';
 import {getApiErrorMessage, PickedAsset, uploadDriverDocument} from '../../services/api';
 
@@ -12,7 +12,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DrivingLicence'>;
 const TIPS = ['Ensure all text is clearly readable', 'Avoid glare, shadows, or cropped edges', 'Upload the original, unaltered document'];
 
 export function DrivingLicenceScreen({navigation}: Props) {
-  const [dlNumber, setDlNumber] = useState('');
   const [frontUrl, setFrontUrl] = useState<string | null>(null);
   const [backUrl, setBackUrl] = useState<string | null>(null);
   const [frontUploading, setFrontUploading] = useState(false);
@@ -68,16 +67,6 @@ export function DrivingLicenceScreen({navigation}: Props) {
       stepLabel="Driving Licence"
       onBack={() => navigation.goBack()}
       footer={<WizardFooter onBack={() => navigation.goBack()} onContinue={() => navigation.navigate('RcDocument')} continueDisabled={!canContinue} />}>
-      <FormField
-        label="Driving Licence Number"
-        state={dlNumber.trim().length > 0 ? 'valid' : 'default'}
-        value={dlNumber}
-        onChangeText={setDlNumber}
-        autoCapitalize="characters"
-        placeholder="e.g. KA-0520220123456"
-        rightElement={dlNumber.trim().length > 0 ? <Icon name="check" size={16} color={colors.primary} /> : undefined}
-      />
-
       <View style={styles.docBlock}>
         <Text style={styles.docLabel}>Front Side</Text>
         {frontUrl ? (
@@ -87,7 +76,7 @@ export function DrivingLicenceScreen({navigation}: Props) {
             icon="user"
             thumbnailLabel="DRIVING LICENCE - FRONT"
             overline="DRIVING LICENCE - FRONT"
-            title={dlNumber || 'Driving Licence'}
+            title="Driving Licence"
             lines={['Front side uploaded']}
             onReplace={() => setFrontUrl(null)}
             onRemove={() => setFrontUrl(null)}
@@ -112,7 +101,7 @@ export function DrivingLicenceScreen({navigation}: Props) {
             icon="image"
             thumbnailLabel="DRIVING LICENCE - BACK"
             overline="DRIVING LICENCE - BACK"
-            title={dlNumber || 'Driving Licence'}
+            title="Driving Licence"
             lines={['Back side uploaded']}
             onReplace={() => setBackUrl(null)}
             onRemove={() => setBackUrl(null)}

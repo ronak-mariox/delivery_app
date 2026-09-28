@@ -1,27 +1,39 @@
-import React, {useState} from 'react';
+import React from 'react';
 import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Button, Icon, ProgressBar, Screen} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
 import LogoMark from '../../assets/brand/logo-mark.svg';
+import {driverName, useDriverAuth} from '../../context/DriverAuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FirstTimeSetup'>;
 
-const DONE_ITEMS = [
-  {title: 'Profile Verified', subtitle: 'Identity confirmed'},
-  {title: 'Documents Approved', subtitle: 'DL, RC, Insurance'},
-  {title: 'Vehicle Registered', subtitle: 'KA 05 MG 7734'},
-  {title: 'Bank Details Added', subtitle: 'HDFC •••8273'},
-  {title: 'Location Permission', subtitle: 'Granted'},
-  {title: 'GPS Enabled', subtitle: 'Enabled'},
-  {title: 'Notifications', subtitle: 'Allowed'},
-];
+function maskAccount(accountNumber?: string): string {
+  if (!accountNumber) {
+    return 'Not added';
+  }
+  return `•••• ${accountNumber.slice(-4)}`;
+}
 
 export function FirstTimeSetupScreen({navigation}: Props) {
-  const [trainingDone, setTrainingDone] = useState(false);
-  const totalSteps = 8;
-  const completedSteps = DONE_ITEMS.length + (trainingDone ? 1 : 0);
+  const {driver} = useDriverAuth();
+  const documents = driver?.documents ?? {};
+  const docCount = ['license_front', 'license_back', 'rc', 'insurance'].filter((k) => !!documents[k as keyof typeof documents]).length;
+
+  const items = [
+    {title: 'Profile', subtitle: driver?.kycStatus === 'verified' ? 'Identity verified' : `KYC ${driver?.kycStatus ?? 'pending'}`, done: driver?.kycStatus === 'verified'},
+    {title: 'Documents', subtitle: `${docCount} of 4 uploaded`, done: docCount >= 3},
+    {
+      title: 'Vehicle',
+      subtitle: driver?.vehicleDetails?.registrationNumber ?? driver?.vehicleType ?? 'Not added',
+      done: !!driver?.vehicleDetails?.registrationNumber,
+    },
+    {title: 'Bank details', subtitle: maskAccount(driver?.bankDetails?.accountNumber), done: !!driver?.bankDetails?.accountNumber},
+    {title: 'Account', subtitle: driver?.status === 'active' ? 'Active' : driver?.status ?? 'pending', done: driver?.status === 'active'},
+  ];
+  const completedSteps = items.filter((i) => i.done).length;
+  const totalSteps = items.length;
 
   return (
     <Screen backgroundColor={colors.primary} statusBarStyle="light-content" edges={['top', 'bottom']}>
@@ -29,8 +41,8 @@ export function FirstTimeSetupScreen({navigation}: Props) {
         <View style={styles.headerTop}>
           <LogoMark width={32} height={32} />
           <View style={styles.headerText}>
-            <Text style={styles.welcome}>Welcome, Rahul!</Text>
-            <Text style={styles.headline}>Almost ready to go live</Text>
+            <Text style={styles.welcome}>Welcome, {driverName(driver)}!</Text>
+            <Text style={styles.headline}>You're ready to go live</Text>
           </View>
         </View>
         <View style={styles.progressBlock}>
@@ -45,58 +57,22 @@ export function FirstTimeSetupScreen({navigation}: Props) {
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        {DONE_ITEMS.map(item => (
+        {items.map((item) => (
           <View key={item.title} style={styles.itemRow}>
-            <View style={styles.itemIcon}>
-              <Icon name="check" size={18} color={colors.primary} />
+            <View style={[styles.itemIcon, item.done ? styles.itemIconDone : styles.itemIconPending]}>
+              <Icon name={item.done ? 'check' : 'alert-circle'} size={18} color={item.done ? colors.primary : colors.warning} />
             </View>
             <View style={styles.itemText}>
               <Text style={styles.itemTitle}>{item.title}</Text>
               <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
             </View>
-            <Text style={styles.itemDone}>Done</Text>
+            <Text style={styles.itemDone}>{item.done ? 'Done' : 'Pending'}</Text>
           </View>
         ))}
-
-        <View style={[styles.itemRow, styles.trainingRow, trainingDone && styles.trainingRowDone]}>
-          <View style={[styles.itemIcon, trainingDone ? styles.itemIconDone : styles.itemIconPending]}>
-            <Icon name={trainingDone ? 'check' : 'alert-circle'} size={18} color={trainingDone ? colors.primary : colors.warning} />
-          </View>
-          <View style={styles.itemText}>
-            <Text style={styles.itemTitle}>Safety Training</Text>
-            <Text style={styles.itemSubtitle}>Mandatory · ~15 min</Text>
-          </View>
-          {trainingDone ? (
-            <Text style={styles.itemDone}>Done</Text>
-          ) : (
-            <View style={styles.requiredTag}>
-              <Text style={styles.requiredTagText}>Required</Text>
-            </View>
-          )}
-        </View>
-
-        {!trainingDone && (
-          <View style={styles.trainingCard}>
-            <View style={styles.trainingCardRow}>
-              <Icon name="alert-triangle" size={22} color={colors.warning} />
-              <View style={styles.trainingCardText}>
-                <Text style={styles.trainingCardTitle}>Complete Safety Training</Text>
-                <Text style={styles.trainingCardDescription}>
-                  A quick 15-minute module covering road safety, customer handling, and delivery etiquette. Mandatory before going live.
-                </Text>
-              </View>
-            </View>
-            <Button label="Start Safety Training" style={styles.trainingButton} onPress={() => setTrainingDone(true)} />
-          </View>
-        )}
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button
-          label={trainingDone ? 'Go Live' : 'Go Live — Complete Training First'}
-          disabled={!trainingDone}
-          onPress={() => navigation.reset({index: 0, routes: [{name: 'Home'}]})}
-        />
+        <Button label="Go to Home" onPress={() => navigation.reset({index: 0, routes: [{name: 'Home'}]})} />
       </View>
     </Screen>
   );
@@ -116,22 +92,12 @@ const styles = StyleSheet.create({
   progressBar: {marginTop: spacing.xs},
   body: {backgroundColor: colors.background, padding: spacing.lg, gap: spacing.sm},
   itemRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md},
-  itemIcon: {width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.primarySurface, alignItems: 'center', justifyContent: 'center'},
+  itemIcon: {width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center'},
   itemIconDone: {backgroundColor: colors.primarySurface},
   itemIconPending: {backgroundColor: '#FFFAEB'},
   itemText: {flex: 1},
   itemTitle: {...typography.labelSemibold, color: colors.textPrimary},
   itemSubtitle: {...typography.caption, color: colors.textSecondary, marginTop: 1},
   itemDone: {...typography.captionSemibold, color: colors.primary},
-  trainingRow: {borderColor: colors.primary},
-  trainingRowDone: {borderColor: colors.border},
-  requiredTag: {backgroundColor: colors.warning, borderRadius: 6, paddingHorizontal: spacing.sm, paddingVertical: 2},
-  requiredTagText: {...typography.overline, fontSize: 11, color: colors.white},
-  trainingCard: {backgroundColor: '#FFFAEB', borderWidth: 1.5, borderColor: '#FEC84B', borderRadius: radius.xl, padding: spacing.lg, gap: spacing.md},
-  trainingCardRow: {flexDirection: 'row', gap: spacing.md},
-  trainingCardText: {flex: 1},
-  trainingCardTitle: {...typography.bodyBold, fontSize: 14, color: '#B54708'},
-  trainingCardDescription: {...typography.label, color: colors.warningText, marginTop: 4, lineHeight: 19},
-  trainingButton: {backgroundColor: colors.warning},
   footer: {padding: spacing.xl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border},
 });

@@ -4,13 +4,14 @@ import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {colors, spacing, typography} from '../../theme';
 import {useDriverAuth} from '../../context/DriverAuthContext';
+import {routeForDriver} from '../../utils/driverRouting';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
 const MIN_SPLASH_MS = 1400;
 
 export function SplashScreen({navigation}: Props) {
-  const {isAuthenticated, isLoading} = useDriverAuth();
+  const {isAuthenticated, isLoading, driver} = useDriverAuth();
 
   useEffect(() => {
     // Wait for the auth context to finish restoring any stored session
@@ -19,10 +20,11 @@ export function SplashScreen({navigation}: Props) {
       return;
     }
     const timer = setTimeout(() => {
-      navigation.replace(isAuthenticated ? 'Home' : 'Welcome');
+      const target = isAuthenticated ? routeForDriver(driver) : {name: 'Welcome' as const};
+      navigation.reset({index: 0, routes: [{name: target.name, params: target.params} as never]});
     }, MIN_SPLASH_MS);
     return () => clearTimeout(timer);
-  }, [isLoading, isAuthenticated, navigation]);
+  }, [isLoading, isAuthenticated, driver, navigation]);
 
   return (
     <View style={styles.container}>

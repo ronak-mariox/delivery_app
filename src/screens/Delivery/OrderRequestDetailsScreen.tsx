@@ -18,7 +18,7 @@ export function OrderRequestDetailsScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
@@ -116,7 +116,11 @@ export function OrderRequestDetailsScreen({route, navigation}: Props) {
           <Text style={styles.paymentText}>
             Payment:{' '}
             <Text style={styles.paymentTextStrong}>
-              Cash on Delivery · Collect ₹{order?.pricing.grandTotal ?? 0} from customer
+              {order?.paymentMethod === 'cod'
+                ? `Cash on Delivery · Collect ₹${order.pricing.grandTotal} from customer`
+                : order?.paymentStatus === 'paid'
+                ? 'Paid online · Nothing to collect'
+                : 'Online payment · Nothing to collect'}
             </Text>
           </Text>
         </View>

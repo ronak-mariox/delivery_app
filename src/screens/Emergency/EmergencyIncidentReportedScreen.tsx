@@ -1,22 +1,54 @@
-import React from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Icon} from '../../components';
+import {ErrorState, Icon, Loader} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
+import {getApiErrorMessage} from '../../services/api';
+import {EmergencyIncident, getEmergencyIncident} from '../../services/driverApi';
+import {formatDateTime, incidentStatusLabel, incidentTypeLabel, shortIncidentId} from './incidentLabels';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EmergencyIncidentReported'>;
 
-const SUMMARY_ROWS = [
-  {label: 'Incident #', value: 'INC-00291'},
-  {label: 'Type', value: 'Threatening customer'},
-  {label: 'Submitted', value: 'Sep 6, 3:16 PM'},
-  {label: 'Location', value: 'Koramangala 5th Block'},
-  {label: 'Order #VR-84821', value: 'Paused'},
-];
+const STATUS_ORDER: EmergencyIncident['status'][] = ['notified', 'reviewing', 'follow_up_scheduled', 'resolved'];
 
-export function EmergencyIncidentReportedScreen({navigation}: Props) {
+export function EmergencyIncidentReportedScreen({navigation, route}: Props) {
+  const {incidentId} = route.params;
+  const [incident, setIncident] = useState<EmergencyIncident | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setIncident(await getEmergencyIncident(incidentId));
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [incidentId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
   const returnHome = () => navigation.reset({index: 0, routes: [{name: 'Home'}]});
+
+  const summaryRows = incident
+    ? [
+        {label: 'Incident #', value: shortIncidentId(incident.id)},
+        {label: 'Type', value: incidentTypeLabel(incident.type)},
+        {label: 'Submitted', value: formatDateTime(incident.createdAt)},
+        {label: 'Status', value: incidentStatusLabel(incident.status)},
+        {label: 'Medical attention', value: incident.medicalNeeded ? 'Requested' : 'Not needed'},
+        {label: 'Evidence', value: incident.evidenceUrls.length ? `${incident.evidenceUrls.length} photo(s)` : 'None'},
+        ...(incident.orderId ? [{label: 'Linked order', value: incident.orderReassigned ? 'Reassigned' : 'Paused'}] : []),
+      ]
+    : [];
+
+  const currentStep = incident ? STATUS_ORDER.indexOf(incident.status) : 0;
 
   return (
     <View style={styles.container}>
@@ -28,43 +60,54 @@ export function EmergencyIncidentReportedScreen({navigation}: Props) {
         <Text style={styles.heroSubtitle}>Your report has been received</Text>
       </View>
 
-      <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Report Summary</Text>
-          {SUMMARY_ROWS.map((row, index) => (
-            <View key={row.label} style={[styles.summaryRow, index < SUMMARY_ROWS.length - 1 && styles.rowBorder]}>
-              <Text style={styles.summaryLabel}>{row.label}</Text>
-              <Text style={styles.summaryValue}>{row.value}</Text>
-            </View>
-          ))}
-        </View>
+      {loading ? (
+        <Loader fullscreen label="Loading report…" />
+      ) : error || !incident ? (
+        <ErrorState title="Could not load report" description={error ?? undefined} onRetry={load} />
+      ) : (
+        <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Report Summary</Text>
+            {summaryRows.map((row, index) => (
+              <View key={row.label} style={[styles.summaryRow, index < summaryRows.length - 1 && styles.rowBorder]}>
+                <Text style={styles.summaryLabel}>{row.label}</Text>
+                <Text style={styles.summaryValue}>{row.value}</Text>
+              </View>
+            ))}
+            {incident.description ? <Text style={styles.description}>{incident.description}</Text> : null}
+          </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Next Steps</Text>
-          <View style={styles.stepRow}>
-            <View style={styles.stepDotDone}>
-              <Icon name="check" size={13} color={colors.white} />
-            </View>
-            <Text style={styles.stepText}>Safety team notified</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Next Steps</Text>
+            {STATUS_ORDER.map((status, index) => {
+              const done = index < currentStep || status === 'resolved' && incident.status === 'resolved';
+              const active = index === currentStep;
+              return (
+                <View key={status} style={styles.stepRow}>
+                  {done ? (
+                    <View style={styles.stepDotDone}>
+                      <Icon name="check" size={13} color={colors.white} />
+                    </View>
+                  ) : active ? (
+                    <View style={styles.stepDotActive} />
+                  ) : (
+                    <View style={styles.stepDotPending} />
+                  )}
+                  <Text style={done || active ? styles.stepText : styles.stepTextMuted}>{incidentStatusLabel(status)}</Text>
+                  {active && status !== 'resolved' ? <Text style={styles.stepStatus}>In progress</Text> : null}
+                </View>
+              );
+            })}
           </View>
-          <View style={styles.stepRow}>
-            <View style={styles.stepDotActive} />
-            <Text style={styles.stepText}>Reviewing your report</Text>
-            <Text style={styles.stepStatus}>In progress</Text>
-          </View>
-          <View style={styles.stepRow}>
-            <View style={styles.stepDotPending} />
-            <Text style={styles.stepTextMuted}>Follow-up in 5 minutes</Text>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
 
       <View style={styles.bottomBar}>
         <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85} onPress={() => navigation.navigate('EmergencySupport')}>
           <Text style={styles.primaryButtonText}>Contact Support Now</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85} onPress={() => navigation.navigate('EmergencyIncidentReport')}>
-          <Text style={styles.outlineButtonText}>View Incident Report</Text>
+        <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85} onPress={() => navigation.navigate('EmergencyShareLocation', {incidentId})}>
+          <Text style={styles.outlineButtonText}>Share My Location</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.ghostButton} activeOpacity={0.85} onPress={returnHome}>
           <Text style={styles.ghostButtonText}>Return to Home</Text>
@@ -84,10 +127,11 @@ const styles = StyleSheet.create({
   body: {padding: spacing.lg, gap: spacing.md, paddingBottom: 160},
   card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm},
   cardTitle: {...typography.bodySemibold, fontSize: 14, color: colors.textPrimary},
-  summaryRow: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xs},
+  summaryRow: {flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.xs},
   rowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
   summaryLabel: {...typography.label, fontSize: 13, color: colors.textSecondary},
-  summaryValue: {...typography.bodySemibold, fontSize: 13, color: colors.textPrimary},
+  summaryValue: {...typography.bodySemibold, fontSize: 13, color: colors.textPrimary, flexShrink: 1, textAlign: 'right'},
+  description: {...typography.body, fontSize: 13, color: colors.textSecondary, marginTop: spacing.xs},
   stepRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
   stepDotDone: {width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center'},
   stepDotActive: {width: 24, height: 24, borderRadius: 12, backgroundColor: colors.warning},

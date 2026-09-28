@@ -1,48 +1,33 @@
-import React from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import React, {useCallback} from 'react';
+import {RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import Svg, {Circle} from 'react-native-svg';
 import {RootStackParamList} from '../../navigation/types';
-import {IconBackButton} from '../../components';
+import {EmptyState, ErrorState, IconBackButton, Loader} from '../../components';
 import {colors, radius, shadows, spacing, typography} from '../../theme';
+import {getEarningsSummary, getPayoutStatus} from '../../services/driverApi';
+import {formatLongDate, formatMoney, periodLabel, useAsyncData} from './earningsShared';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EarningsBreakdown'>;
 
-const SEGMENTS = [
-  {label: 'Base', pct: 50, color: colors.primary},
-  {label: 'Distance', pct: 30, color: colors.primaryDark},
-  {label: 'Bonuses', pct: 15, color: colors.primaryBorder},
-  {label: 'Incentives', pct: 5, color: '#A7F3D0'},
-];
-
-const CATEGORY_ROWS = [
-  {label: 'Base pay', deliveries: '18', amount: '₹756'},
-  {label: 'Distance pay', deliveries: '18', amount: '₹374'},
-  {label: 'On-time bonus', deliveries: '14', amount: '₹98'},
-  {label: 'Incentive bonus', deliveries: '1', amount: '₹56'},
-];
-
-const DAY_ROWS = [
-  {day: 'Mon', value: '₹180'},
-  {day: 'Tue', value: '₹220'},
-  {day: 'Wed', value: '₹310'},
-  {day: 'Thu', value: '₹190'},
-  {day: 'Fri', value: '₹280'},
-  {day: 'Sat', value: '₹428'},
-  {day: 'Sun', value: '₹0', faint: true},
-];
+interface Segment {
+  label: string;
+  amount: number;
+  pct: number;
+  color: string;
+}
 
 const SIZE = 140;
 const STROKE = 16;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function Donut() {
+function Donut({segments}: {segments: Segment[]}) {
   let cumulative = 0;
   return (
     <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
       <Circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} stroke={colors.background} strokeWidth={STROKE} fill="none" />
-      {SEGMENTS.map(seg => {
+      {segments.map(seg => {
         const length = (seg.pct / 100) * CIRCUMFERENCE;
         const offset = CIRCUMFERENCE - cumulative;
         cumulative += length;
@@ -66,74 +51,111 @@ function Donut() {
   );
 }
 
+async function loadBreakdown() {
+  const [summary, payout] = await Promise.all([getEarningsSummary('month'), getPayoutStatus()]);
+  const {breakdown} = summary;
+  const total = breakdown.deliveryFee + breakdown.distanceBonus + breakdown.onTimeBonus + breakdown.incentiveBonus;
+  const pct = (amount: number) => (total > 0 ? Math.round((amount / total) * 100) : 0);
+  const segments: Segment[] = [
+    {label: 'Delivery fees', amount: breakdown.deliveryFee, pct: pct(breakdown.deliveryFee), color: colors.primary},
+    {label: 'Distance bonus', amount: breakdown.distanceBonus, pct: pct(breakdown.distanceBonus), color: colors.primaryDark},
+    {label: 'On-time bonus', amount: breakdown.onTimeBonus, pct: pct(breakdown.onTimeBonus), color: colors.primaryBorder},
+    {label: 'Incentive bonus', amount: breakdown.incentiveBonus, pct: pct(breakdown.incentiveBonus), color: '#A7F3D0'},
+  ];
+  return {summary, payout, segments, total};
+}
+
 export function EarningsBreakdownScreen({navigation}: Props) {
+  const loader = useCallback(() => loadBreakdown(), []);
+  const {data, loading, refreshing, error, reload} = useAsyncData(loader);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <IconBackButton onPress={() => navigation.goBack()} />
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Earnings Breakdown</Text>
-          <Text style={styles.headerSubtitle}>Sep 1–6, 2026</Text>
+          <Text style={styles.headerSubtitle}>{`Last 30 days · ${periodLabel('month')}`}</Text>
         </View>
       </View>
 
-      <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <View style={styles.totalBlock}>
-          <Text style={styles.totalValue}>₹1,284</Text>
-          <Text style={styles.totalLabel}>This week total</Text>
-        </View>
+      {loading && <Loader fullscreen label="Loading breakdown…" />}
 
-        <View style={styles.donutCard}>
-          <View style={styles.donutWrap}>
-            <Donut />
-            <View style={styles.donutCenter} pointerEvents="none">
-              <Text style={styles.donutCenterLabel}>Total</Text>
-              <Text style={styles.donutCenterValue}>₹1,284</Text>
-            </View>
+      {!loading && !data && <ErrorState title="Could not load breakdown" description={error ?? undefined} onRetry={() => reload()} />}
+
+      {!loading && data && (
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => reload(true)} />}>
+          <View style={styles.totalBlock}>
+            <Text style={styles.totalValue}>{formatMoney(data.summary.totalEarnings)}</Text>
+            <Text style={styles.totalLabel}>{`This month · ${data.summary.deliveries} deliveries`}</Text>
           </View>
-          <View style={styles.legend}>
-            {SEGMENTS.map(seg => (
-              <View key={seg.label} style={styles.legendRow}>
-                <View style={[styles.legendDot, {backgroundColor: seg.color}]} />
-                <Text style={styles.legendLabel}>{seg.label}</Text>
-                <Text style={styles.legendPct}>{seg.pct}%</Text>
+
+          {data.total > 0 ? (
+            <View style={styles.donutCard}>
+              <View style={styles.donutWrap}>
+                <Donut segments={data.segments} />
+                <View style={styles.donutCenter} pointerEvents="none">
+                  <Text style={styles.donutCenterLabel}>Total</Text>
+                  <Text style={styles.donutCenterValue}>{formatMoney(data.total)}</Text>
+                </View>
+              </View>
+              <View style={styles.legend}>
+                {data.segments.map(seg => (
+                  <View key={seg.label} style={styles.legendRow}>
+                    <View style={[styles.legendDot, {backgroundColor: seg.color}]} />
+                    <Text style={styles.legendLabel}>{seg.label}</Text>
+                    <Text style={styles.legendPct}>{`${seg.pct}%`}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyCard}>
+              <EmptyState icon="bar-chart" title="No earnings yet this month" description="Your breakdown will appear once you complete deliveries." />
+            </View>
+          )}
+
+          <View style={styles.tableCard}>
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.tableHeaderText, styles.tableCol1]}>Category</Text>
+              <Text style={[styles.tableHeaderText, styles.tableCol2]}>Share</Text>
+              <Text style={[styles.tableHeaderText, styles.tableCol3]}>Amount</Text>
+            </View>
+            {data.segments.map(row => (
+              <View key={row.label} style={styles.tableRow}>
+                <Text style={[styles.tableCellText, styles.tableCol1]}>{row.label}</Text>
+                <Text style={[styles.tableCellMuted, styles.tableCol2]}>{`${row.pct}%`}</Text>
+                <Text style={[styles.tableCellStrong, styles.tableCol3]}>{formatMoney(row.amount)}</Text>
               </View>
             ))}
-          </View>
-        </View>
-
-        <View style={styles.tableCard}>
-          <View style={styles.tableHeaderRow}>
-            <Text style={[styles.tableHeaderText, styles.tableCol1]}>Category</Text>
-            <Text style={[styles.tableHeaderText, styles.tableCol2]}>Deliveries</Text>
-            <Text style={[styles.tableHeaderText, styles.tableCol3]}>Amount</Text>
-          </View>
-          {CATEGORY_ROWS.map(row => (
-            <View key={row.label} style={styles.tableRow}>
-              <Text style={[styles.tableCellText, styles.tableCol1]}>{row.label}</Text>
-              <Text style={[styles.tableCellMuted, styles.tableCol2]}>{row.deliveries}</Text>
-              <Text style={[styles.tableCellStrong, styles.tableCol3]}>{row.amount}</Text>
+            <View style={[styles.tableRow, styles.tableTotalRow]}>
+              <Text style={[styles.tableTotalText, styles.tableCol1]}>Total</Text>
+              <Text style={[styles.tableTotalText, styles.tableCol2]}>{data.total > 0 ? '100%' : '—'}</Text>
+              <Text style={[styles.tableTotalText, styles.tableCol3, styles.tableTotalGreen]}>{formatMoney(data.total)}</Text>
             </View>
-          ))}
-          <View style={[styles.tableRow, styles.tableTotalRow]}>
-            <Text style={[styles.tableTotalText, styles.tableCol1]}>Total</Text>
-            <Text style={[styles.tableTotalText, styles.tableCol2]}>18</Text>
-            <Text style={[styles.tableTotalText, styles.tableCol3, styles.tableTotalGreen]}>₹1,284</Text>
           </View>
-        </View>
 
-        <View style={styles.dayCard}>
-          <Text style={styles.dayTitle}>Day-by-Day</Text>
-          <View style={styles.dayRow}>
-            {DAY_ROWS.map(d => (
-              <View key={d.day} style={styles.dayColumn}>
-                <Text style={styles.dayLabel}>{d.day}</Text>
-                <Text style={[styles.dayValue, d.faint && styles.dayValueFaint]}>{d.value}</Text>
-              </View>
-            ))}
+          <View style={styles.payoutCard}>
+            <Text style={styles.payoutTitle}>Payout status</Text>
+            <View style={styles.payoutRow}>
+              <Text style={styles.payoutLabel}>Pending payout</Text>
+              <Text style={styles.payoutValueStrong}>{formatMoney(data.payout.pendingAmount)}</Text>
+            </View>
+            <View style={styles.payoutRow}>
+              <Text style={styles.payoutLabel}>Lifetime paid</Text>
+              <Text style={styles.payoutValue}>{formatMoney(data.payout.lifetimePaid)}</Text>
+            </View>
+            <View style={styles.payoutRow}>
+              <Text style={styles.payoutLabel}>Next payout</Text>
+              <Text style={styles.payoutValue}>{formatLongDate(data.payout.nextPayoutDate)}</Text>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -160,6 +182,7 @@ const styles = StyleSheet.create({
   totalValue: {...typography.display, fontSize: 38, color: colors.primary, letterSpacing: -1},
   totalLabel: {...typography.label, fontSize: 13, color: colors.textSecondary, marginTop: 2},
   donutCard: {flexDirection: 'row', alignItems: 'center', gap: spacing.xxl, backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg, ...shadows.sm},
+  emptyCard: {backgroundColor: colors.surface, borderRadius: radius.xl, ...shadows.sm},
   donutWrap: {width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center'},
   donutCenter: {position: 'absolute', alignItems: 'center'},
   donutCenterLabel: {...typography.caption, fontSize: 11, color: colors.textSecondary},
@@ -182,11 +205,10 @@ const styles = StyleSheet.create({
   tableCol1: {flex: 2.2},
   tableCol2: {flex: 1},
   tableCol3: {flex: 1, textAlign: 'right'},
-  dayCard: {backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg, ...shadows.sm},
-  dayTitle: {...typography.labelSemibold, fontSize: 13, color: colors.textPrimary},
-  dayRow: {flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.sm},
-  dayColumn: {alignItems: 'center'},
-  dayLabel: {...typography.caption, fontSize: 11, color: colors.textSecondary},
-  dayValue: {...typography.captionSemibold, fontSize: 12, color: colors.textPrimary, marginTop: 3},
-  dayValueFaint: {color: colors.primaryBorder},
+  payoutCard: {backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg, gap: spacing.sm, ...shadows.sm},
+  payoutTitle: {...typography.labelSemibold, fontSize: 13, color: colors.textPrimary},
+  payoutRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+  payoutLabel: {...typography.label, fontSize: 13, color: colors.textSecondary},
+  payoutValue: {...typography.labelSemibold, fontSize: 13, color: colors.textPrimary},
+  payoutValueStrong: {...typography.bodyBold, fontSize: 14, color: colors.primary},
 });

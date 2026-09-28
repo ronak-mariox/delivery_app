@@ -1,57 +1,67 @@
-import React, {useState} from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useCallback, useState} from 'react';
+import {RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {IconBackButton} from '../../components';
-import {colors, radius, shadows, spacing, typography} from '../../theme';
+import {Button, ErrorState, IconBackButton, Loader} from '../../components';
+import {colors, radius, spacing, typography} from '../../theme';
+import {getApiErrorMessage} from '../../services/api';
+import {getBonusHistory, getEarningsSummary, LedgerEntry, Paged} from '../../services/driverApi';
+import {formatMoney, periodStart, useAsyncData} from './earningsShared';
+import {LedgerList} from './LedgerList';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BonusHistory'>;
 
-type Period = 'This Week' | 'Last Week' | 'Expired';
-type Status = 'paid' | 'expired';
+type Filter = 'All' | 'This Week' | 'This Month';
+const FILTERS: Filter[] = ['All', 'This Week', 'This Month'];
+const PAGE_SIZE = 30;
 
-interface BonusRow {
-  id: string;
-  period: Period;
-  name: string;
-  date: string;
-  amount: string;
-  status: Status;
-}
-
-const HISTORY: BonusRow[] = [
-  {id: 'r1', period: 'This Week', name: 'Peak Hour Bonus', date: 'Sep 6', amount: '₹150', status: 'paid'},
-  {id: 'r2', period: 'This Week', name: 'On-time Streak', date: 'Sep 5', amount: '₹50', status: 'paid'},
-  {id: 'r3', period: 'This Week', name: 'Monday Boost', date: 'Sep 2', amount: '₹80', status: 'paid'},
-  {id: 'r4', period: 'Last Week', name: 'Weekend Surge', date: 'Aug 31', amount: '₹200', status: 'paid'},
-  {id: 'r5', period: 'Last Week', name: 'Night Owl', date: 'Aug 29', amount: '₹80', status: 'paid'},
-  {id: 'r6', period: 'Last Week', name: 'New Zone', date: 'Aug 28', amount: '₹120', status: 'paid'},
-  {id: 'r7', period: 'Expired', name: 'Flash Bonus (10AM)', date: 'Aug 27 · Missed by 3 deliveries', amount: '₹100', status: 'expired'},
-];
-
-type Filter = 'All' | 'This Week' | 'This Month' | 'Expired';
-const FILTERS: Filter[] = ['All', 'This Week', 'This Month', 'Expired'];
-
-function matchesFilter(row: BonusRow, filter: Filter) {
+function matchesFilter(entry: LedgerEntry, filter: Filter) {
   if (filter === 'All') {
     return true;
   }
-  if (filter === 'This Week') {
-    return row.period === 'This Week';
-  }
-  if (filter === 'This Month') {
-    return row.period === 'This Week' || row.period === 'Last Week';
-  }
-  return row.period === 'Expired';
+  const start = periodStart(filter === 'This Week' ? 'week' : 'month').getTime();
+  return new Date(entry.createdAt).getTime() >= start;
+}
+
+async function loadBonuses() {
+  const [month, history] = await Promise.all([getEarningsSummary('month'), getBonusHistory(1, PAGE_SIZE)]);
+  return {month, history};
 }
 
 export function BonusHistoryScreen({navigation}: Props) {
-  const [filter, setFilter] = useState<Filter>('This Week');
+  const [filter, setFilter] = useState<Filter>('All');
+  const [extraPages, setExtraPages] = useState<Paged<LedgerEntry>[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
-  const periods: Period[] = ['This Week', 'Last Week', 'Expired'];
-  const grouped = periods
-    .map(period => ({period, rows: HISTORY.filter(r => r.period === period && matchesFilter(r, filter))}))
-    .filter(g => g.rows.length > 0);
+  const loader = useCallback(async () => {
+    setExtraPages([]);
+    setLoadMoreError(null);
+    return loadBonuses();
+  }, []);
+  const {data, loading, refreshing, error, reload} = useAsyncData(loader);
+
+  const lastPage = extraPages.length > 0 ? extraPages[extraPages.length - 1] : data?.history;
+  const hasMore = Boolean(lastPage && lastPage.page < lastPage.totalPages);
+  const entries = [...(data?.history.items ?? []), ...extraPages.flatMap(p => p.items)];
+  const visible = entries.filter(e => matchesFilter(e, filter));
+  const visibleTotal = visible.reduce((sum, e) => sum + e.amount, 0);
+
+  const loadMore = async () => {
+    if (!lastPage || loadingMore) {
+      return;
+    }
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const next = await getBonusHistory(lastPage.page + 1, PAGE_SIZE);
+      setExtraPages(prev => [...prev, next]);
+    } catch (err) {
+      setLoadMoreError(getApiErrorMessage(err));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -60,53 +70,53 @@ export function BonusHistoryScreen({navigation}: Props) {
         <Text style={styles.headerTitle}>Bonus History</Text>
       </View>
 
-      <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroCard}>
-          <Text style={styles.heroAmount}>₹1,248</Text>
-          <Text style={styles.heroLabel}>Total bonuses earned this month</Text>
-          <Text style={styles.heroSubLabel}>12 incentives completed</Text>
-        </View>
+      {loading && <Loader fullscreen label="Loading bonus history…" />}
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {FILTERS.map(f => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.filterPill, filter === f && styles.filterPillActive]}
-              activeOpacity={0.8}
-              onPress={() => setFilter(f)}>
-              <Text style={[styles.filterPillText, filter === f && styles.filterPillTextActive]}>{f}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+      {!loading && !data && <ErrorState title="Could not load bonus history" description={error ?? undefined} onRetry={() => reload()} />}
 
-        <View style={styles.card}>
-          {grouped.map((group, groupIndex) => (
-            <View key={group.period}>
-              <View style={[styles.groupHeader, groupIndex > 0 && styles.groupHeaderBorderTop]}>
-                <Text style={styles.groupHeaderText}>{group.period}</Text>
-              </View>
-              {group.rows.map((row, index) => (
-                <View key={row.id} style={[styles.row, index < group.rows.length - 1 && styles.rowBorder]}>
-                  <View style={styles.rowInfo}>
-                    <Text style={[styles.rowName, row.status === 'expired' && styles.rowNameExpired]}>{row.name}</Text>
-                    <Text style={styles.rowDate}>{row.date}</Text>
-                  </View>
-                  <Text style={[styles.rowAmount, row.status === 'expired' && styles.rowAmountExpired]}>{row.amount}</Text>
-                  <View style={[styles.statusPill, row.status === 'expired' && styles.statusPillExpired]}>
-                    <Text style={[styles.statusPillText, row.status === 'expired' && styles.statusPillTextExpired]}>
-                      {row.status === 'paid' ? 'PAID' : 'EXPIRED'}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ))}
-          <View style={styles.footerRow}>
-            <Text style={styles.footerLabel}>12 bonuses</Text>
-            <Text style={styles.footerValue}>₹1,248 earned</Text>
+      {!loading && data && (
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => reload(true)} />}>
+          <View style={styles.heroCard}>
+            <Text style={styles.heroAmount}>{formatMoney(data.month.breakdown.incentiveBonus)}</Text>
+            <Text style={styles.heroLabel}>Total bonuses earned in the last 30 days</Text>
+            <Text style={styles.heroSubLabel}>{`${data.history.total} ${data.history.total === 1 ? 'bonus' : 'bonuses'} all time`}</Text>
           </View>
-        </View>
-      </ScrollView>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+            {FILTERS.map(f => (
+              <TouchableOpacity key={f} style={[styles.filterPill, filter === f && styles.filterPillActive]} activeOpacity={0.8} onPress={() => setFilter(f)}>
+                <Text style={[styles.filterPillText, filter === f && styles.filterPillTextActive]}>{f}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <LedgerList
+            entries={visible}
+            emptyTitle="No bonuses yet"
+            emptyDescription="Completed incentives will show up here."
+            footer={
+              <>
+                {hasMore || loadMoreError ? (
+                  <View style={styles.loadMore}>
+                    {loadMoreError ? <Text style={styles.loadMoreError}>{loadMoreError}</Text> : null}
+                    <Button label="Load more" variant="ghost" loading={loadingMore} onPress={loadMore} />
+                  </View>
+                ) : null}
+                {visible.length > 0 && (
+                  <View style={styles.footerRow}>
+                    <Text style={styles.footerLabel}>{`${visible.length} ${visible.length === 1 ? 'bonus' : 'bonuses'}`}</Text>
+                    <Text style={styles.footerValue}>{`${formatMoney(visibleTotal)} earned`}</Text>
+                  </View>
+                )}
+              </>
+            }
+          />
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -136,22 +146,8 @@ const styles = StyleSheet.create({
   filterPillActive: {backgroundColor: colors.primarySurface, borderColor: colors.primary},
   filterPillText: {...typography.labelSemibold, fontSize: 13, color: colors.textSecondary},
   filterPillTextActive: {color: colors.primary},
-  card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.xl, overflow: 'hidden', ...shadows.sm},
-  groupHeader: {backgroundColor: '#F9FAFB', borderBottomWidth: 1, borderBottomColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm},
-  groupHeaderBorderTop: {borderTopWidth: 1, borderTopColor: colors.border},
-  groupHeaderText: {...typography.captionSemibold, fontSize: 12, color: colors.textSecondary},
-  row: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.sm},
-  rowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
-  rowInfo: {flex: 1},
-  rowName: {...typography.labelSemibold, fontSize: 13, color: colors.textPrimary},
-  rowNameExpired: {color: colors.textMuted},
-  rowDate: {...typography.caption, fontSize: 11, color: colors.textMuted, marginTop: 2},
-  rowAmount: {...typography.bodyBold, fontSize: 14, color: colors.primary},
-  rowAmountExpired: {color: colors.textMuted},
-  statusPill: {backgroundColor: colors.primarySurface, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 3},
-  statusPillExpired: {backgroundColor: '#F3F4F6'},
-  statusPillText: {...typography.captionSemibold, fontSize: 10, color: colors.primary},
-  statusPillTextExpired: {color: colors.textMuted},
+  loadMore: {alignItems: 'center', paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: '#F3F4F6', gap: spacing.xs},
+  loadMoreError: {...typography.caption, color: colors.dangerText, textAlign: 'center', paddingHorizontal: spacing.lg},
   footerRow: {flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#F9FAFB', borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.md},
   footerLabel: {...typography.label, fontSize: 13, color: colors.textSecondary},
   footerValue: {...typography.h4, fontSize: 15, color: colors.primary},

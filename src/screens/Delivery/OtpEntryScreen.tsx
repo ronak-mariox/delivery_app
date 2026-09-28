@@ -1,18 +1,19 @@
 import React, {useEffect, useState} from 'react';
 import {Alert, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import axios from 'axios';
 import {RootStackParamList} from '../../navigation/types';
 import {Button, OtpInput, Screen, ScreenHeader} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
 import {DeliveryOrder, useOrders} from '../../context/OrdersContext';
-import {getApiErrorMessage} from '../../services/api';
+import {getApiErrorBody, getApiErrorMessage, getApiErrorStatus} from '../../services/api';
+
+const OTP_LENGTH = 6;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OtpEntry'>;
 
 function initialsFor(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
+  if (parts.length === 0) {return '?';}
   return parts
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase())
@@ -25,13 +26,13 @@ export function OtpEntryScreen({route, navigation}: Props) {
   const [order, setOrder] = useState<DeliveryOrder | null>(null);
   const [otp, setOtp] = useState('');
   const [verifying, setVerifying] = useState(false);
-  const isComplete = otp.length === 4;
+  const isComplete = otp.length === OTP_LENGTH;
 
   useEffect(() => {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
@@ -48,10 +49,22 @@ export function OtpEntryScreen({route, navigation}: Props) {
     setVerifying(true);
     try {
       await verifyDeliveryOtp(orderId, otp);
-      navigation.navigate('CustomerConfirmed', {orderId});
+      navigation.replace('DeliverySuccess', {orderId});
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 422) {
-        navigation.navigate('DeliveryOtpIncorrect', {orderId});
+      const status = getApiErrorStatus(err);
+      if (status === 422) {
+        const body = getApiErrorBody(err);
+        navigation.replace('DeliveryOtpIncorrect', {
+          orderId,
+          attemptsLeft: typeof body?.attemptsLeft === 'number' ? body.attemptsLeft : undefined,
+          message: body?.error,
+        });
+      } else if (status === 429) {
+        Alert.alert(
+          'Too many attempts',
+          getApiErrorMessage(err, 'OTP attempts exhausted for this order. Please call the customer or contact support.'),
+          [{text: 'OK', onPress: () => navigation.navigate('ArrivedAtCustomer', {orderId})}],
+        );
       } else {
         Alert.alert('Verification Failed', getApiErrorMessage(err, 'Could not verify OTP. Please try again.'));
       }
@@ -65,7 +78,7 @@ export function OtpEntryScreen({route, navigation}: Props) {
       <ScreenHeader title="Enter Delivery OTP" onBack={() => navigation.goBack()} />
       <View style={styles.body}>
         <Text style={styles.instructions}>
-          Ask the customer for their 4-digit delivery code sent to their registered mobile number.
+          Ask the customer for the 6-digit delivery code sent to their registered mobile number.
         </Text>
 
         <View style={styles.customerPill}>
@@ -75,10 +88,10 @@ export function OtpEntryScreen({route, navigation}: Props) {
           <Text style={styles.customerName}>{customerName}</Text>
         </View>
 
-        <OtpInput value={otp} onChange={setOtp} />
+        <OtpInput length={OTP_LENGTH} value={otp} onChange={setOtp} />
 
-        <TouchableOpacity hitSlop={{top: 8, bottom: 8, left: 8, right: 8}} onPress={() => navigation.navigate('StateActionFailed')}>
-          <Text style={styles.otpHelp}>OTP not working?</Text>
+        <TouchableOpacity hitSlop={{top: 8, bottom: 8, left: 8, right: 8}} onPress={() => navigation.navigate('CallCustomer', {orderId})}>
+          <Text style={styles.otpHelp}>Customer doesn't have the code? Call them</Text>
         </TouchableOpacity>
       </View>
 

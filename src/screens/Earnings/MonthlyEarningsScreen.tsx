@@ -1,141 +1,129 @@
-import React from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useCallback} from 'react';
+import {RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import Svg, {Line, Path, Polyline} from 'react-native-svg';
 import {RootStackParamList} from '../../navigation/types';
-import {Icon, IconBackButton, ProgressBar} from '../../components';
+import {ErrorState, IconBackButton, Loader} from '../../components';
 import {colors, radius, shadows, spacing, typography} from '../../theme';
+import {getEarningsSummary} from '../../services/driverApi';
+import {fetchLedgerForPeriod, formatMoney, groupByDay, isEarningEntry, periodLabel, useAsyncData} from './earningsShared';
+import {LedgerList} from './LedgerList';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MonthlyEarnings'>;
 
-const TOP_DAYS = [
-  {label: 'Sep 6 (Sat)', value: '₹428', best: true},
-  {label: 'Sep 2 (Tue)', value: '₹380'},
-  {label: 'Sep 5 (Fri)', value: '₹312'},
-];
+const MONTH_DAYS = 30;
 
-const STAT_GRID = [
-  {label: 'Total', value: '₹8,240'},
-  {label: 'Deliveries', value: '142'},
-  {label: 'Avg/day', value: '₹274'},
-  {label: 'Best week', value: 'W2 ₹2,140'},
-];
-
-const CHART_W = 340;
-const CHART_H = 120;
-const REAL_POINTS: [number, number][] = [
-  [0, 100],
-  [34, 42],
-  [68, 78],
-  [102, 20],
-  [136, 60],
-  [170, 44],
-  [204, 56],
-];
-const PROJECTED_POINTS: [number, number][] = [
-  [204, 56],
-  [238, 68],
-  [272, 50],
-  [306, 62],
-  [340, 46],
-];
-
-function toPoints(pts: [number, number][]) {
-  return pts.map(p => p.join(',')).join(' ');
+async function loadMonth() {
+  const [summary, ledger] = await Promise.all([getEarningsSummary('month'), fetchLedgerForPeriod('month')]);
+  const earnings = ledger.filter(isEarningEntry);
+  const days = groupByDay(earnings, MONTH_DAYS);
+  const workingDays = days.filter(d => d.value > 0).length;
+  const topDays = [...days]
+    .filter(d => d.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3);
+  return {summary, ledger: earnings, days, workingDays, topDays};
 }
 
-const AREA_PATH = `M0,${CHART_H} L${toPoints(REAL_POINTS)
-  .split(' ')
-  .join(' L')} L${REAL_POINTS[REAL_POINTS.length - 1][0]},${CHART_H} Z`;
-
 export function MonthlyEarningsScreen({navigation}: Props) {
+  const loader = useCallback(() => loadMonth(), []);
+  const {data, loading, refreshing, error, reload} = useAsyncData(loader);
+
+  const maxDay = data ? Math.max(...data.days.map(d => d.value), 0) : 0;
+  const avgPerDay = data && data.workingDays > 0 ? data.summary.totalEarnings / data.workingDays : 0;
+  const avgPerDelivery = data && data.summary.deliveries > 0 ? data.summary.totalEarnings / data.summary.deliveries : 0;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <IconBackButton onPress={() => navigation.goBack()} />
-          <Text style={styles.headerTitle}>Monthly Earnings</Text>
-        </View>
-        <View style={styles.datePager}>
-          <TouchableOpacity hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Icon name="chevron-left" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-          <Text style={styles.dateText}>September 2026</Text>
-          <TouchableOpacity hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Icon name="chevron-right" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Monthly Earnings</Text>
+            <Text style={styles.headerSubtitle}>{`Last 30 days · ${periodLabel('month')}`}</Text>
+          </View>
         </View>
       </View>
 
-      <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <View style={styles.totalBlock}>
-          <Text style={styles.totalValue}>₹8,240</Text>
-          <Text style={styles.totalLabel}>23 working days · 142 deliveries</Text>
-        </View>
+      {loading && <Loader fullscreen label="Loading monthly earnings…" />}
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Daily Earnings — September</Text>
-          <View style={styles.chartWrap}>
-            <Svg width={CHART_W} height={CHART_H} viewBox={`0 0 ${CHART_W} ${CHART_H}`}>
-              <Path d={AREA_PATH} fill={colors.primarySurface} stroke="none" />
-              <Polyline points={toPoints(REAL_POINTS)} fill="none" stroke={colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-              <Polyline
-                points={toPoints(PROJECTED_POINTS)}
-                fill="none"
-                stroke={colors.primary}
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <Line x1={204} y1={0} x2={204} y2={CHART_H} stroke={colors.border} strokeWidth={1} strokeDasharray="3 3" />
-            </Svg>
-          </View>
-          <View style={styles.axisRow}>
-            <Text style={styles.axisLabel}>1</Text>
-            <Text style={styles.axisLabel}>7</Text>
-            <Text style={styles.axisLabel}>14</Text>
-            <Text style={styles.axisLabel}>21</Text>
-            <Text style={styles.axisLabel}>28</Text>
-          </View>
-          <Text style={styles.chartCaption}>Dashed = projected</Text>
-        </View>
+      {!loading && !data && <ErrorState title="Could not load earnings" description={error ?? undefined} onRetry={() => reload()} />}
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Top Performing Days</Text>
-          {TOP_DAYS.map((d, index) => (
-            <View key={d.label} style={[styles.topRow, index < TOP_DAYS.length - 1 && styles.topRowBorder]}>
-              <Text style={styles.topLabel}>{d.label}</Text>
-              <View style={styles.topRight}>
-                <Text style={styles.topValue}>{d.value}</Text>
-                {d.best && (
-                  <View style={styles.bestPill}>
-                    <Text style={styles.bestPillText}>Best</Text>
+      {!loading && data && (
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => reload(true)} />}>
+          <View style={styles.totalBlock}>
+            <Text style={styles.totalValue}>{formatMoney(data.summary.totalEarnings)}</Text>
+            <Text style={styles.totalLabel}>{`${data.workingDays} working days · ${data.summary.deliveries} deliveries`}</Text>
+            {data.summary.changeLabel ? <Text style={styles.totalChange}>{data.summary.changeLabel}</Text> : null}
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Daily earnings</Text>
+            {maxDay > 0 ? (
+              <>
+                <View style={styles.chart}>
+                  {data.days.map(d => (
+                    <View key={d.key} style={styles.chartColumn}>
+                      <View style={[styles.chartBar, {height: Math.max(2, (d.value / maxDay) * 100)}, d.value === maxDay ? styles.chartBarPeak : styles.chartBarNormal]} />
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.axisRow}>
+                  <Text style={styles.axisLabel}>{data.days[0].label}</Text>
+                  <Text style={styles.axisLabel}>{data.days[Math.floor(MONTH_DAYS / 2)].label}</Text>
+                  <Text style={styles.axisLabel}>Today</Text>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.chartEmpty}>No earnings recorded this month.</Text>
+            )}
+          </View>
+
+          {data.topDays.length > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Top Performing Days</Text>
+              {data.topDays.map((d, index) => (
+                <View key={d.key} style={[styles.topRow, index < data.topDays.length - 1 && styles.topRowBorder]}>
+                  <Text style={styles.topLabel}>{new Date(d.key).toLocaleDateString([], {month: 'short', day: 'numeric', weekday: 'short'})}</Text>
+                  <View style={styles.topRight}>
+                    <Text style={styles.topValue}>{formatMoney(d.value)}</Text>
+                    {index === 0 && (
+                      <View style={styles.bestPill}>
+                        <Text style={styles.bestPillText}>Best</Text>
+                      </View>
+                    )}
                   </View>
-                )}
+                </View>
+              ))}
+            </View>
+          )}
+
+          <View style={styles.statGrid}>
+            {[
+              {label: 'Total', value: formatMoney(data.summary.totalEarnings)},
+              {label: 'Deliveries', value: String(data.summary.deliveries)},
+              {label: 'Avg/day', value: formatMoney(avgPerDay)},
+              {label: 'Avg/delivery', value: formatMoney(avgPerDelivery)},
+            ].map(stat => (
+              <View key={stat.label} style={styles.statTile}>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+                <Text style={styles.statValue}>{stat.value}</Text>
               </View>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.statGrid}>
-          {STAT_GRID.map(stat => (
-            <View key={stat.label} style={styles.statTile}>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-              <Text style={styles.statValue}>{stat.value}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.goalRow}>
-            <Text style={styles.goalTitle}>Monthly Goal</Text>
-            <Text style={styles.goalValue}>₹8,240 / ₹12,000</Text>
+            ))}
           </View>
-          <ProgressBar progress={0.69} height={10} style={styles.goalBar} />
-          <Text style={styles.goalCaption}>69% of target reached</Text>
-        </View>
-      </ScrollView>
+
+          <LedgerList
+            title="Earnings this month"
+            entries={data.ledger}
+            emptyTitle="No earnings this month"
+            emptyDescription="Completed deliveries will show up here."
+            onPressOrder={orderId => navigation.navigate('DeliveryEarnings', {orderId})}
+          />
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -145,19 +133,24 @@ const styles = StyleSheet.create({
   flex: {flex: 1},
   header: {backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, paddingHorizontal: spacing.xl, paddingTop: 52, paddingBottom: spacing.lg},
   headerRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
+  headerText: {flex: 1},
   headerTitle: {...typography.title, fontSize: 17, color: colors.textPrimary},
-  datePager: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.lg, paddingTop: spacing.md},
-  dateText: {...typography.bodySemibold, fontSize: 14, color: colors.textPrimary},
+  headerSubtitle: {...typography.caption, color: colors.textSecondary, marginTop: 1},
   body: {padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl},
   totalBlock: {alignItems: 'center', paddingVertical: spacing.sm},
   totalValue: {...typography.display, fontSize: 38, color: colors.primary, letterSpacing: -1},
   totalLabel: {...typography.label, fontSize: 13, color: colors.textSecondary, marginTop: 2},
+  totalChange: {...typography.caption, color: colors.textSecondary, marginTop: 2},
   card: {backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg, ...shadows.sm},
   cardTitle: {...typography.labelSemibold, fontSize: 13, color: colors.textPrimary},
-  chartWrap: {alignItems: 'center', paddingTop: spacing.md},
-  axisRow: {flexDirection: 'row', justifyContent: 'space-between', width: CHART_W, alignSelf: 'center'},
+  chart: {flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 120, paddingTop: spacing.md, gap: 2},
+  chartColumn: {flex: 1, alignItems: 'center', justifyContent: 'flex-end'},
+  chartBar: {width: '100%', borderRadius: 2},
+  chartBarNormal: {backgroundColor: colors.primarySurface},
+  chartBarPeak: {backgroundColor: colors.primary},
+  axisRow: {flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs},
   axisLabel: {...typography.micro, color: colors.textSecondary},
-  chartCaption: {...typography.caption, fontSize: 11, color: colors.textSecondary, textAlign: 'right', marginTop: spacing.xs},
+  chartEmpty: {...typography.label, color: colors.textSecondary, marginTop: spacing.sm},
   topRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm},
   topRowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
   topLabel: {...typography.label, fontSize: 13, color: colors.textSecondary},
@@ -169,9 +162,4 @@ const styles = StyleSheet.create({
   statTile: {flexBasis: '48%', flexGrow: 1, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, ...shadows.sm},
   statLabel: {...typography.caption, color: colors.textSecondary},
   statValue: {...typography.bodyBold, fontSize: 16, color: colors.textPrimary, marginTop: spacing.xxs},
-  goalRow: {flexDirection: 'row', justifyContent: 'space-between'},
-  goalTitle: {...typography.labelSemibold, fontSize: 13, color: colors.textPrimary},
-  goalValue: {...typography.caption, color: colors.textSecondary},
-  goalBar: {marginTop: spacing.sm},
-  goalCaption: {...typography.caption, color: colors.textSecondary, marginTop: spacing.sm},
 });

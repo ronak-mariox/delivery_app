@@ -17,7 +17,7 @@ export function NoResponseScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
@@ -74,7 +74,7 @@ export function NoResponseScreen({route, navigation}: Props) {
         <TouchableOpacity
           style={styles.optionRow}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate('DeliverySuccess', {orderId})}>
+          onPress={() => navigation.navigate('OtpEntry', {orderId})}>
           <View style={styles.optionIconNeutral}>
             <Icon name="home" size={20} color={colors.textSecondary} />
           </View>

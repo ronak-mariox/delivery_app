@@ -36,9 +36,9 @@ export function OrderCancelledByCustomerScreen({route, navigation}: Props) {
     let cancelled = false;
     setLoading(true);
     getOrder(orderId)
-      .then(o => { if (!cancelled) setOrder(o); })
+      .then(o => { if (!cancelled) {setOrder(o);} })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => { if (!cancelled) {setLoading(false);} });
     return () => { cancelled = true; };
   }, [orderId, getOrder]);
 
@@ -62,6 +62,7 @@ export function OrderCancelledByCustomerScreen({route, navigation}: Props) {
   const cancelledAt = order.statusHistory[cancelledEventIndex]?.at ?? order.updatedAt;
   const statusBeforeCancel = cancelledEventIndex > 0 ? order.statusHistory[cancelledEventIndex - 1]?.status : undefined;
   const customerName = order.address.contactName || 'The customer';
+  const byCustomer = order.cancelledBy === 'customer';
   const canReturnToStore = !!order.pickupConfirmedAt;
 
   return (
@@ -72,8 +73,10 @@ export function OrderCancelledByCustomerScreen({route, navigation}: Props) {
         </View>
       </View>
       <View style={styles.titleBlock}>
-        <Text style={styles.title}>Order Cancelled by Customer</Text>
-        <Text style={styles.subtitle}>{`${customerName} cancelled order #${order.orderNumber}.`}</Text>
+        <Text style={styles.title}>{byCustomer ? 'Order Cancelled by Customer' : 'Order Cancelled'}</Text>
+        <Text style={styles.subtitle}>
+          {byCustomer ? `${customerName} cancelled order #${order.orderNumber}.` : `Order #${order.orderNumber} was cancelled.`}
+        </Text>
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>

@@ -24,7 +24,7 @@ export function HandOverOrderScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
@@ -80,8 +80,8 @@ export function HandOverOrderScreen({route, navigation}: Props) {
 
       <View style={styles.footer}>
         <Button
-          label="I've Handed Over the Order"
-          onPress={() => navigation.navigate('ConfirmingDelivery', {orderId})}
+          label="Enter Delivery OTP"
+          onPress={() => navigation.navigate('OtpEntry', {orderId})}
         />
       </View>
     </Screen>

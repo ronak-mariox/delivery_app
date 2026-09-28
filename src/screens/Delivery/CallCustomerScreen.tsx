@@ -12,7 +12,7 @@ const QUICK_MESSAGES = ['I\'m outside your building', 'Please come to the gate',
 
 function initialsFor(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
+  if (parts.length === 0) {return '?';}
   return parts
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase())
@@ -30,7 +30,7 @@ export function CallCustomerScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {

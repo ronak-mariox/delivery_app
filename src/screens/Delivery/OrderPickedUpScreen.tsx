@@ -19,7 +19,7 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 }
 
 function formatTime(iso?: string): string {
-  if (!iso) return '—';
+  if (!iso) {return '—';}
   return new Date(iso).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
 }
 
@@ -33,7 +33,7 @@ export function OrderPickedUpScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {

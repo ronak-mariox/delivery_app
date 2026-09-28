@@ -8,12 +8,12 @@ import {colors, radius, spacing, typography} from '../../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'EnableNotifications'>;
 
 const PREVIEWS = [
-  {icon: 'bicycle' as const, title: 'New Delivery Request 🛵', subtitle: '₹48 · 2.4 km · Indiranagar → HSR Layout', time: 'now', highlighted: true},
-  {icon: 'credit-card' as const, title: 'Earnings Credited', subtitle: '₹1,240 transferred to your account', time: '2m ago', highlighted: false},
-  {icon: 'credit-card' as const, title: 'Incentive Unlocked!', subtitle: 'Complete 2 more deliveries for bonus ₹200', time: '1h ago', highlighted: false},
+  {icon: 'bicycle' as const, title: 'New delivery request', subtitle: 'Shown full-screen while you are online', time: '', highlighted: true},
+  {icon: 'credit-card' as const, title: 'Earnings updates', subtitle: 'When a delivery is paid out', time: '', highlighted: false},
+  {icon: 'credit-card' as const, title: 'Incentive progress', subtitle: 'When you unlock a bonus', time: '', highlighted: false},
 ];
 
-const ALERTS = ['New delivery requests (real-time)', 'Earnings & payment updates', 'Bonus & incentive unlocks', 'System alerts & support replies'];
+const ALERTS = ['New delivery requests while online', 'Earnings & payout updates', 'Bonus & incentive unlocks', 'Account & support updates'];
 
 export function EnableNotificationsScreen({navigation}: Props) {
   return (
@@ -22,8 +22,8 @@ export function EnableNotificationsScreen({navigation}: Props) {
         <View style={styles.iconWrap}>
           <Icon name="bell" size={40} color={colors.primary} />
         </View>
-        <Text style={styles.title}>Enable Notifications</Text>
-        <Text style={styles.subtitle}>Get instant alerts for new delivery requests and earnings updates. Never miss an order.</Text>
+        <Text style={styles.title}>In-app alerts</Text>
+        <Text style={styles.subtitle}>New requests and updates appear inside the app while it is open. Check the bell icon on Home for anything you missed.</Text>
 
         <Text style={styles.previewLabel}>PREVIEW</Text>
         <View style={styles.previewList}>
@@ -53,8 +53,7 @@ export function EnableNotificationsScreen({navigation}: Props) {
       </View>
 
       <View style={styles.actions}>
-        <Button label="Allow Notifications" onPress={() => navigation.navigate('FirstTimeSetup')} />
-        <Button label="Skip for Now" variant="ghost" onPress={() => navigation.navigate('FirstTimeSetup')} />
+        <Button label="Continue" onPress={() => navigation.navigate('FirstTimeSetup')} />
       </View>
     </Screen>
   );

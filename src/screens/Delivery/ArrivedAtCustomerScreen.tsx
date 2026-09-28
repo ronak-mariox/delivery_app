@@ -17,7 +17,7 @@ export function ArrivedAtCustomerScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
@@ -82,10 +82,10 @@ export function ArrivedAtCustomerScreen({route, navigation}: Props) {
         <TouchableOpacity
           style={styles.optionRow}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate('DeliverySuccess', {orderId})}>
+          onPress={() => navigation.navigate('OtpEntry', {orderId})}>
           <View style={styles.optionText}>
             <Text style={styles.optionTitle}>Leave at door</Text>
-            <Text style={styles.optionSubtitle}>If instructions say so</Text>
+            <Text style={styles.optionSubtitle}>Still needs the customer's OTP</Text>
           </View>
           <View style={styles.neutralChip}>
             <Text style={styles.neutralChipText}>Leave</Text>

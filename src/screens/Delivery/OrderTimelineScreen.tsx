@@ -36,9 +36,9 @@ export function OrderTimelineScreen({route, navigation}: Props) {
     let cancelled = false;
     setLoading(true);
     getOrderTimeline(orderId)
-      .then(list => { if (!cancelled) setEvents(list); })
-      .catch(() => { if (!cancelled) setEvents([]); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .then(list => { if (!cancelled) {setEvents(list);} })
+      .catch(() => { if (!cancelled) {setEvents([]);} })
+      .finally(() => { if (!cancelled) {setLoading(false);} });
     return () => { cancelled = true; };
   }, [orderId, getOrderTimeline]);
 

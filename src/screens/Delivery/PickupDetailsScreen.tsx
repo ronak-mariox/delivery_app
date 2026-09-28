@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Linking, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Badge, Button, Icon, IconBackButton} from '../../components';
+import {Badge, Button, IconBackButton} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
 import {DeliveryOrder, useOrders} from '../../context/OrdersContext';
 
@@ -17,7 +17,7 @@ export function PickupDetailsScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {

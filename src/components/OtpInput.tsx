@@ -8,7 +8,7 @@ interface OtpInputProps {
   onChange: (value: string) => void;
 }
 
-export function OtpInput({length = 4, value, onChange}: OtpInputProps) {
+export function OtpInput({length = 6, value, onChange}: OtpInputProps) {
   const inputs = useRef<Array<TextInput | null>>([]);
   const digits = Array.from({length}, (_, i) => value[i] ?? '');
 
@@ -60,10 +60,10 @@ export function OtpInput({length = 4, value, onChange}: OtpInputProps) {
 }
 
 const styles = StyleSheet.create({
-  row: {flexDirection: 'row', gap: 12},
+  row: {flexDirection: 'row', gap: 8},
   box: {
-    width: 64,
-    height: 72,
+    width: 46,
+    height: 60,
     borderRadius: radius.lg,
     borderWidth: 2,
     borderColor: colors.border,

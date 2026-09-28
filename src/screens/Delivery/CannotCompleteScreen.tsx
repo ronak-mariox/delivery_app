@@ -17,7 +17,7 @@ export function CannotCompleteScreen({route, navigation}: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    getOrder(orderId).then((o) => { if (!cancelled) setOrder(o); }).catch(() => {});
+    getOrder(orderId).then((o) => { if (!cancelled) {setOrder(o);} }).catch(() => {});
     return () => { cancelled = true; };
   }, [orderId, getOrder]);
 
@@ -67,7 +67,7 @@ export function CannotCompleteScreen({route, navigation}: Props) {
               <Text style={styles.optionSubtitle}>Leave the order at a safe spot, if allowed</Text>
             </View>
           </View>
-          <Button label="Safe drop at location" variant="secondary" onPress={() => navigation.navigate('DeliverySuccess', {orderId})} />
+          <Button label="Safe drop (enter OTP)" variant="secondary" onPress={() => navigation.navigate('OtpEntry', {orderId})} />
         </View>
 
         <View style={styles.optionCard}>

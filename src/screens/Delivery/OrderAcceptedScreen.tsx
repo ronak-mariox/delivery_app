@@ -17,7 +17,7 @@ export function OrderAcceptedScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
@@ -28,7 +28,7 @@ export function OrderAcceptedScreen({route, navigation}: Props) {
   const itemCount = order?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
   const earnings = order?.driverEarnings?.total ?? order?.pricing.deliveryFee;
   const distanceKm = (() => {
-    if (!order?.pickup.latitude || !order.pickup.longitude || !order.address.latitude || !order.address.longitude) return null;
+    if (!order?.pickup.latitude || !order.pickup.longitude || !order.address.latitude || !order.address.longitude) {return null;}
     return haversineKm(order.pickup.latitude, order.pickup.longitude, order.address.latitude, order.address.longitude);
   })();
 
@@ -58,7 +58,7 @@ export function OrderAcceptedScreen({route, navigation}: Props) {
           </View>
 
           <View style={styles.orderCardBody}>
-            <View style={styles.routeRow}>
+            <TouchableOpacity style={styles.routeRow} activeOpacity={0.8} onPress={() => navigation.navigate('PickupDetails', {orderId})}>
               <View style={styles.routeLine}>
                 <View style={styles.routeDotPickup} />
                 <View style={styles.routeConnector} />
@@ -71,7 +71,8 @@ export function OrderAcceptedScreen({route, navigation}: Props) {
                 <Text style={styles.routeTitle}>{order?.address.line1 ?? 'Customer address'}</Text>
                 <Text style={styles.routeSubtitle}>{order?.address.city ?? ''}</Text>
               </View>
-            </View>
+              <Icon name="chevron-right" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
 
             <View style={styles.metricsRow}>
               <Metric value={earnings != null ? `₹${earnings}` : '—'} label="Earnings" highlighted />

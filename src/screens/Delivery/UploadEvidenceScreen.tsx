@@ -1,11 +1,14 @@
 import React, {useEffect, useState} from 'react';
-import {Alert, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
+import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Button, Icon, IconBackButton, Screen} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
 import {DeliveryIssueType, DeliveryOrder, useOrders} from '../../context/OrdersContext';
-import {getApiErrorMessage} from '../../services/api';
+import {getApiErrorMessage, resolveAssetUrl, uploadEvidence} from '../../services/api';
+
+const MAX_EVIDENCE = 4;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'UploadEvidence'>;
 
@@ -26,18 +29,55 @@ export function UploadEvidenceScreen({route, navigation}: Props) {
   const {getOrder, reportIssue} = useOrders();
   const [order, setOrder] = useState<DeliveryOrder | null>(null);
   const [description, setDescription] = useState('');
+  const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const pickEvidence = (source: 'camera' | 'gallery') => {
+    const options = {mediaType: 'photo' as const, quality: 0.7 as const};
+    const handle = async (response: {didCancel?: boolean; errorMessage?: string; assets?: {uri?: string; type?: string; fileName?: string}[]}) => {
+      if (response.didCancel) {
+        return;
+      }
+      if (response.errorMessage) {
+        Alert.alert('Could not open picker', response.errorMessage);
+        return;
+      }
+      const asset = response.assets?.[0];
+      if (!asset?.uri) {
+        return;
+      }
+      setUploading(true);
+      try {
+        const url = await uploadEvidence(asset);
+        setEvidenceUrls((prev) => [...prev, url].slice(0, MAX_EVIDENCE));
+      } catch (err) {
+        Alert.alert('Upload failed', getApiErrorMessage(err));
+      } finally {
+        setUploading(false);
+      }
+    };
+    if (source === 'camera') {
+      launchCamera(options, handle);
+    } else {
+      launchImageLibrary(options, handle);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
-    getOrder(orderId).then((o) => { if (!cancelled) setOrder(o); }).catch(() => {});
+    getOrder(orderId).then((o) => { if (!cancelled) {setOrder(o);} }).catch(() => {});
     return () => { cancelled = true; };
   }, [orderId, getOrder]);
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const result = await reportIssue(orderId, {type: issueType, description: description.trim() || undefined});
+      const result = await reportIssue(orderId, {
+        type: issueType,
+        description: description.trim() || undefined,
+        evidenceUrls: evidenceUrls.length ? evidenceUrls : undefined,
+      });
       if (UNASSIGN_TYPES.includes(issueType)) {
         Alert.alert(
           'Reported',
@@ -99,10 +139,37 @@ export function UploadEvidenceScreen({route, navigation}: Props) {
           placeholder="Add any details that will help support resolve this (optional)"
           placeholderTextColor={colors.textMuted}
         />
+
+        <Text style={styles.sectionLabel}>Photo evidence (optional)</Text>
+        <View style={styles.evidenceRow}>
+          {evidenceUrls.map((url) => (
+            <View key={url} style={styles.evidenceThumbWrap}>
+              <Image source={{uri: resolveAssetUrl(url)}} style={styles.evidenceThumb} />
+              <TouchableOpacity
+                style={styles.evidenceRemove}
+                hitSlop={{top: 6, bottom: 6, left: 6, right: 6}}
+                onPress={() => setEvidenceUrls((prev) => prev.filter((u) => u !== url))}>
+                <Icon name="x" size={12} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+          ))}
+          {evidenceUrls.length < MAX_EVIDENCE && (
+            <>
+              <TouchableOpacity style={styles.evidenceAdd} activeOpacity={0.8} disabled={uploading} onPress={() => pickEvidence('camera')}>
+                <Icon name="camera" size={18} color={colors.primary} />
+                <Text style={styles.evidenceAddText}>{uploading ? 'Uploading…' : 'Camera'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.evidenceAdd} activeOpacity={0.8} disabled={uploading} onPress={() => pickEvidence('gallery')}>
+                <Icon name="image" size={18} color={colors.primary} />
+                <Text style={styles.evidenceAddText}>Gallery</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button label={submitting ? 'Submitting…' : 'Submit Report'} disabled={submitting} onPress={handleSubmit} />
+        <Button label={submitting ? 'Submitting…' : 'Submit Report'} disabled={submitting || uploading} onPress={handleSubmit} />
         <Button label="Cancel" variant="secondary" disabled={submitting} onPress={() => navigation.goBack()} />
       </View>
     </Screen>
@@ -143,5 +210,11 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginTop: -spacing.sm,
   },
+  evidenceRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
+  evidenceThumbWrap: {width: 72, height: 72},
+  evidenceThumb: {width: 72, height: 72, borderRadius: radius.md, backgroundColor: colors.border},
+  evidenceRemove: {position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center'},
+  evidenceAdd: {width: 72, height: 72, borderRadius: radius.md, borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.primaryBorder, alignItems: 'center', justifyContent: 'center', gap: 4},
+  evidenceAddText: {...typography.caption, fontSize: 11, color: colors.primary},
   footer: {padding: spacing.lg, gap: spacing.sm, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border},
 });

@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Icon, Screen} from '../../components';
+import {Button, Icon, Screen} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
 import {DeliveryOrder, useOrders} from '../../context/OrdersContext';
 
@@ -17,18 +17,13 @@ export function ConfirmingArrivalScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [orderId, getOrder]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => navigation.replace('ArrivedAtStore', {orderId}), 1800);
-    return () => clearTimeout(timer);
-  }, [navigation, orderId]);
 
   const storeName = order?.pickup.name ?? 'the store';
   const itemCount = order?.items.length ?? 0;
@@ -76,6 +71,9 @@ export function ConfirmingArrivalScreen({route, navigation}: Props) {
         <Text style={styles.noteText}>This will log your arrival time for the record</Text>
       </View>
 
+      <View style={styles.confirmButtonWrap}>
+        <Button label="Confirm I've Arrived" onPress={() => navigation.replace('ArrivedAtStore', {orderId})} />
+      </View>
       <TouchableOpacity style={styles.cancelButton} activeOpacity={0.7} onPress={() => navigation.goBack()}>
         <Text style={styles.cancelText}>Cancel</Text>
       </TouchableOpacity>
@@ -103,6 +101,7 @@ const styles = StyleSheet.create({
   infoText: {...typography.label, color: colors.textSecondary},
   noteRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xl},
   noteText: {...typography.caption, color: colors.textSecondary, textAlign: 'center', flexShrink: 1},
+  confirmButtonWrap: {width: '100%', paddingHorizontal: spacing.xl, marginTop: spacing.lg},
   cancelButton: {paddingVertical: spacing.sm},
   cancelText: {...typography.body, color: colors.textSecondary, textDecorationLine: 'underline'},
 });

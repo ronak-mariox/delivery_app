@@ -20,17 +20,17 @@ const CONFETTI = [
 ] as const;
 
 function formatTime(iso?: string): string | null {
-  if (!iso) return null;
+  if (!iso) {return null;}
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
+  if (Number.isNaN(d.getTime())) {return null;}
   return d.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
 }
 
 function formatDuration(startIso?: string, endIso?: string): string | null {
-  if (!startIso || !endIso) return null;
+  if (!startIso || !endIso) {return null;}
   const start = new Date(startIso).getTime();
   const end = new Date(endIso).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return null;
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {return null;}
   const minutes = Math.max(1, Math.round((end - start) / 60000));
   return `${minutes} minute${minutes === 1 ? '' : 's'}`;
 }
@@ -44,7 +44,7 @@ export function DeliverySuccessScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {

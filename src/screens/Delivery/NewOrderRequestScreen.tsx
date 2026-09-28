@@ -25,7 +25,7 @@ export function NewOrderRequestScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((order) => {
-        if (cancelled) return;
+        if (cancelled) {return;}
         setPickupName(order.pickup.name);
         setDropArea(order.address.city);
         setItemCount(order.items.reduce((sum, item) => sum + item.quantity, 0));

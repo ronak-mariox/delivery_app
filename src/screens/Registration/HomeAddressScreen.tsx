@@ -1,9 +1,9 @@
 import React, {useState} from 'react';
-import {Alert, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Alert, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {ChipGroup, FormField, Icon, WizardFooter, WizardScreen} from '../../components';
-import {colors, radius, spacing, typography} from '../../theme';
+import {colors, spacing, typography} from '../../theme';
 import {api, getApiErrorMessage} from '../../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HomeAddress'>;
@@ -60,21 +60,6 @@ export function HomeAddressScreen({navigation}: Props) {
       footer={
         <WizardFooter onBack={() => navigation.goBack()} onContinue={handleContinue} continueDisabled={!isValid || submitting} />
       }>
-      <TouchableOpacity
-        style={styles.locationBanner}
-        activeOpacity={0.85}
-        onPress={() => Alert.alert('Coming soon', 'Auto-fill from GPS location is not available yet.')}>
-        <View style={styles.locationIcon}>
-          <Icon name="map-pin" size={20} color={colors.white} />
-        </View>
-        <View style={styles.locationText}>
-          <Text style={styles.locationTitle}>Use Current Location</Text>
-          <Text style={styles.locationSubtitle}>Auto-fill address from GPS</Text>
-        </View>
-        <View style={styles.chevronRight}>
-          <Icon name="chevron-left" size={16} color={colors.primary} />
-        </View>
-      </TouchableOpacity>
 
       <FormField label="House / Flat / Building No." value={house} onChangeText={setHouse} placeholder="e.g. 42B, Green Valley Towers" />
       <FormField
@@ -114,21 +99,6 @@ export function HomeAddressScreen({navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
-  locationBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.primarySurface,
-    borderWidth: 1.5,
-    borderColor: colors.primaryBorder,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-  },
-  locationIcon: {width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center'},
-  locationText: {flex: 1},
-  locationTitle: {...typography.labelSemibold, color: '#13845A'},
-  locationSubtitle: {...typography.caption, color: colors.textSecondary, marginTop: 2},
-  chevronRight: {transform: [{rotate: '180deg'}]},
   row: {flexDirection: 'row', gap: spacing.md},
   rowItem: {flex: 1},
   addressTypeBlock: {gap: spacing.xs},

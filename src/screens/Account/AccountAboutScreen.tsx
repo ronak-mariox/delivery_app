@@ -1,25 +1,24 @@
 import React from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Icon, IconName} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
+import {emailSupport} from '../Support/supportContacts';
+import {version as APP_VERSION} from '../../../package.json';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AccountAbout'>;
 
 const SYSTEM_INFO = [
-  {label: 'OS', value: 'Android 13'},
-  {label: 'Device', value: 'Samsung Galaxy A53'},
-  {label: 'Network', value: 'WiFi'},
-  {label: 'App ID', value: 'com.verdant.rider'},
+  {label: 'App version', value: APP_VERSION},
+  {label: 'Platform', value: `${Platform.OS === 'ios' ? 'iOS' : 'Android'} ${Platform.Version}`},
 ];
 
 export function AccountAboutScreen({navigation}: Props) {
-  const moreLinks: {label: string; icon?: IconName; onPress?: () => void}[] = [
-    {label: 'Open Source Licenses'},
-    {label: 'Rate the App', icon: 'star'},
-    {label: 'Send Feedback', icon: 'message-circle'},
-    {label: 'Report a Bug', icon: 'alert-circle', onPress: () => navigation.navigate('SupportOtherIssues')},
+  const moreLinks: {label: string; icon: IconName; onPress: () => void}[] = [
+    {label: 'Send Feedback', icon: 'message-circle', onPress: () => emailSupport('App feedback')},
+    {label: 'Report a Bug', icon: 'alert-circle', onPress: () => emailSupport(`Bug report (v${APP_VERSION})`)},
+    {label: 'Help & Support', icon: 'headphones', onPress: () => navigation.navigate('SupportHub')},
   ];
 
   return (
@@ -37,10 +36,7 @@ export function AccountAboutScreen({navigation}: Props) {
             <Text style={styles.appIconText}>VR</Text>
           </View>
           <Text style={styles.appName}>Verdant Rider</Text>
-          <Text style={styles.appVersion}>Version 3.2.1 (build 320100)</Text>
-          <View style={styles.upToDatePill}>
-            <Text style={styles.upToDateText}>Up to date</Text>
-          </View>
+          <Text style={styles.appVersion}>Version {APP_VERSION}</Text>
         </View>
 
         <Text style={styles.groupTitle}>SYSTEM INFO</Text>
@@ -59,16 +55,14 @@ export function AccountAboutScreen({navigation}: Props) {
             <TouchableOpacity
               key={link.label}
               style={[styles.linkRow, index < moreLinks.length - 1 && styles.rowBorder]}
-              activeOpacity={link.onPress ? 0.7 : 1}
-              disabled={!link.onPress}
+              activeOpacity={0.7}
               onPress={link.onPress}>
-              {link.icon && <Icon name={link.icon} size={18} color={colors.primary} />}
+              <Icon name={link.icon} size={18} color={colors.primary} />
               <Text style={styles.linkText}>{link.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.footerText}>Build date: Sep 1, 2026</Text>
         <Text style={styles.footerText}>© 2026 Verdant Technologies</Text>
       </ScrollView>
     </View>
@@ -96,8 +90,6 @@ const styles = StyleSheet.create({
   appIconText: {...typography.h3, fontSize: 20, color: colors.white},
   appName: {...typography.bodyBold, fontSize: 18, color: colors.textPrimary},
   appVersion: {...typography.label, fontSize: 13, color: colors.textSecondary},
-  upToDatePill: {backgroundColor: colors.primarySurface, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: 4, marginTop: spacing.sm},
-  upToDateText: {...typography.bodySemibold, fontSize: 12, color: colors.primary},
   groupTitle: {...typography.captionSemibold, fontSize: 12, color: colors.textSecondary, letterSpacing: 0.8, marginTop: spacing.md},
   card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, overflow: 'hidden'},
   infoRow: {flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md},

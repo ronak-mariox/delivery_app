@@ -1,67 +1,69 @@
 import React from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Icon, Input} from '../../components';
-import {colors, radius, spacing, typography} from '../../theme';
+import {Badge, EmptyState, Icon, IconBackButton} from '../../components';
+import {colors, radius, shadows, spacing, typography} from '../../theme';
+import {useDriverAuth} from '../../context/DriverAuthContext';
+import {ContactSupport} from './ContactSupport';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileAddress'>;
 
+const ADDRESS_TYPE_LABEL = {home: 'Home', work: 'Work', other: 'Other'} as const;
+
 export function ProfileAddressScreen({navigation}: Props) {
+  const {driver} = useDriverAuth();
+  const address = driver?.address;
+
+  const rows = address
+    ? [
+        {label: 'Address line', value: address.line1},
+        {label: 'Area / Locality', value: address.area},
+        {label: 'City', value: address.city},
+        {label: 'State', value: address.state},
+        {label: 'PIN code', value: address.pincode},
+      ]
+    : [];
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Icon name="chevron-left" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Address</Text>
-        <TouchableOpacity>
-          <Text style={styles.editLink}>Edit</Text>
-        </TouchableOpacity>
+        <IconBackButton onPress={() => navigation.goBack()} />
+        <Text style={styles.headerTitle}>Home Address</Text>
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
-          <View style={styles.cardTopRow}>
-            <View style={styles.homeIcon}>
-              <Icon name="home" size={18} color={colors.primary} />
-            </View>
-            <View>
-              <Text style={styles.cardTitle}>Home Address</Text>
-              <View style={styles.primaryPill}>
-                <Text style={styles.primaryPillText}>Primary</Text>
+        {address ? (
+          <>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryIcon}>
+                <Icon name="map-pin" size={20} color={colors.primary} />
               </View>
+              <View style={styles.flex}>
+                <Text style={styles.summaryText}>
+                  {address.line1}, {address.area}
+                </Text>
+                <Text style={styles.summarySub}>
+                  {address.city}, {address.state} {address.pincode}
+                </Text>
+              </View>
+              <Badge label={ADDRESS_TYPE_LABEL[address.addressType] ?? 'Other'} tone="primary" />
             </View>
-          </View>
-          <Text style={styles.addressLine}>42, 3rd Cross, Koramangala 4th Block</Text>
-          <Text style={styles.addressLine}>Bengaluru, Karnataka 560034</Text>
-          <View style={styles.gpsRow}>
-            <Icon name="map-pin" size={14} color={colors.textSecondary} />
-            <Text style={styles.gpsText}>Detected via GPS · Last updated Sep 1</Text>
-          </View>
-        </View>
 
-        <Text style={styles.sectionLabel}>Edit Address</Text>
-        <Input label="Flat / Door No" defaultValue="42" />
-        <Input label="Street / Colony" defaultValue="3rd Cross, Koramangala 4th Block" />
-        <Input label="City" defaultValue="Bengaluru" />
-        <Input label="State" defaultValue="Karnataka" />
-        <View>
-          <Text style={styles.label}>Pincode</Text>
-          <View style={styles.pincodeField}>
-            <Text style={styles.pincodeText}>560034</Text>
-            <Icon name="check" size={16} color={colors.primary} />
-          </View>
-        </View>
+            <View style={styles.card}>
+              {rows.map((row, index) => (
+                <View key={row.label} style={[styles.row, index < rows.length - 1 && styles.rowBorder]}>
+                  <Text style={styles.rowLabel}>{row.label}</Text>
+                  <Text style={styles.rowValue}>{row.value || '—'}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          <EmptyState icon="map-pin" title="No address on file" description="Your home address was not captured during registration." />
+        )}
 
-        <TouchableOpacity style={styles.detectButton} activeOpacity={0.8}>
-          <Icon name="navigation" size={16} color={colors.primary} />
-          <Text style={styles.detectButtonText}>Detect Current Location</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.saveButton} activeOpacity={0.85} onPress={() => navigation.goBack()}>
-          <Text style={styles.saveButtonText}>Save Address</Text>
-        </TouchableOpacity>
+        <ContactSupport description="To change your address, contact support." />
       </ScrollView>
     </View>
   );
@@ -73,7 +75,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.md,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -81,44 +83,15 @@ const styles = StyleSheet.create({
     paddingTop: 52,
     paddingBottom: spacing.md,
   },
-  headerTitle: {...typography.title, fontSize: 17, color: colors.textPrimary},
-  editLink: {...typography.bodyMedium, fontSize: 14, color: colors.primary},
+  headerTitle: {...typography.title, fontSize: 17, color: colors.textPrimary, flex: 1},
   body: {padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl},
-  card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg},
-  cardTopRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
-  homeIcon: {width: 34, height: 34, borderRadius: radius.sm, backgroundColor: colors.primarySurface, alignItems: 'center', justifyContent: 'center'},
-  cardTitle: {...typography.bodySemibold, fontSize: 14, color: colors.textPrimary},
-  primaryPill: {backgroundColor: colors.primarySurface, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 1, marginTop: spacing.xxs, alignSelf: 'flex-start'},
-  primaryPillText: {...typography.captionSemibold, fontSize: 10, color: colors.primary},
-  addressLine: {...typography.bodyMedium, fontSize: 14, color: colors.textLabel, marginTop: spacing.sm},
-  gpsRow: {flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.sm},
-  gpsText: {...typography.caption, color: colors.textSecondary},
-  sectionLabel: {...typography.bodySemibold, fontSize: 13, color: colors.textPrimary, marginTop: spacing.sm},
-  label: {...typography.label, color: colors.textLabel, marginBottom: spacing.xs},
-  pincodeField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    height: 50,
-  },
-  pincodeText: {...typography.body, fontSize: 15, color: colors.textPrimary},
-  detectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderRadius: radius.lg,
-    height: 48,
-    marginTop: spacing.sm,
-  },
-  detectButtonText: {...typography.bodySemibold, fontSize: 14, color: colors.primary},
-  saveButton: {backgroundColor: colors.primary, borderRadius: radius.lg, height: 50, alignItems: 'center', justifyContent: 'center'},
-  saveButtonText: {...typography.bodySemibold, fontSize: 15, color: colors.white},
+  summaryCard: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg},
+  summaryIcon: {width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.primarySurface, alignItems: 'center', justifyContent: 'center'},
+  summaryText: {...typography.bodySemibold, fontSize: 14, color: colors.textPrimary},
+  summarySub: {...typography.caption, color: colors.textSecondary, marginTop: 2},
+  card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, overflow: 'hidden', ...shadows.sm},
+  row: {paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
+  rowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
+  rowLabel: {...typography.caption, fontSize: 12, color: colors.textSecondary},
+  rowValue: {...typography.bodyMedium, fontSize: 15, color: colors.textPrimary, marginTop: 3},
 });

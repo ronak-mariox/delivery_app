@@ -1,104 +1,35 @@
-import React, {useState} from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React from 'react';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Icon} from '../../components';
-import {colors, radius, spacing, typography} from '../../theme';
+import {SupportFaqItem, SupportTopicScreen} from './SupportTopicScreen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SupportDocumentIssues'>;
 
-const ISSUES = [
-  'Document rejected',
-  'Upload failed',
-  'Document expiring soon',
-  'Verification taking too long',
-  'Wrong document details',
-  'Other document problem',
+const FAQS: SupportFaqItem[] = [
+  {
+    question: 'My document was rejected',
+    answer:
+      'The rejection reason is shown on the document in Documents. Common causes are blurry photos, cut-off edges, mismatched names or an expired document. Upload a clear photo of the full document to re-submit.',
+  },
+  {
+    question: 'The upload keeps failing',
+    answer: 'Use a photo under 10 MB in JPG or PNG format and make sure you have a stable connection. Switching from mobile data to Wi-Fi often helps with larger images.',
+  },
+  {
+    question: 'My document is expiring soon',
+    answer:
+      'Upload the renewed document from Documents before the current one expires so you can keep delivering without interruption. The old document stays valid until the new one is verified.',
+  },
+  {
+    question: 'Verification is taking too long',
+    answer: 'Most documents are reviewed within one to two business days. If a document has been under review for longer, contact support with your registered mobile number.',
+  },
+  {
+    question: 'The details on my document are wrong',
+    answer: 'If the document shows outdated details (for example a previous address), upload the corrected document. Details cannot be edited manually once a document is submitted.',
+  },
 ];
 
 export function SupportDocumentIssuesScreen({navigation}: Props) {
-  const [selected, setSelected] = useState<string | null>(null);
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Icon name="chevron-left" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Document Issues</Text>
-      </View>
-
-      <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Text style={styles.intro}>Select the type of document issue you are facing.</Text>
-
-        {ISSUES.map(issue => {
-          const active = issue === selected;
-          return (
-            <TouchableOpacity key={issue} style={[styles.row, active && styles.rowActive]} activeOpacity={0.8} onPress={() => setSelected(issue)}>
-              <Text style={styles.rowText}>{issue}</Text>
-              <Icon name="chevron-right" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85} onPress={() => navigation.navigate('TicketIssueDetails')}>
-          <Text style={styles.primaryButtonText}>Create Ticket</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85} onPress={() => navigation.navigate('DocumentsHub')}>
-          <Text style={styles.outlineButtonText}>View Documents</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  return <SupportTopicScreen title="Document Issues" intro="Help with document uploads, verification and expiry." faqs={FAQS} onBack={() => navigation.goBack()} />;
 }
-
-const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: colors.background},
-  flex: {flex: 1},
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingTop: 52,
-    paddingBottom: spacing.md,
-  },
-  headerTitle: {...typography.title, fontSize: 18, color: colors.textPrimary},
-  body: {padding: spacing.lg, gap: spacing.sm, paddingBottom: 120},
-  intro: {...typography.label, fontSize: 13, color: colors.textSecondary, marginBottom: spacing.xs},
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-  },
-  rowActive: {borderColor: colors.primary, borderWidth: 1.5},
-  rowText: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary},
-  bottomBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  primaryButton: {flex: 1, backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: 'center'},
-  primaryButtonText: {...typography.bodySemibold, fontSize: 15, color: colors.white},
-  outlineButton: {flex: 1, borderWidth: 1.5, borderColor: colors.primary, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: 'center'},
-  outlineButtonText: {...typography.bodySemibold, fontSize: 15, color: colors.primary},
-});

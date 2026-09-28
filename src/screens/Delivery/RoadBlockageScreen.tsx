@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Button, Icon, Screen} from '../../components';
@@ -17,7 +17,7 @@ export function RoadBlockageScreen({route, navigation}: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    getOrder(orderId).then((o) => { if (!cancelled) setOrder(o); }).catch(() => {});
+    getOrder(orderId).then((o) => { if (!cancelled) {setOrder(o);} }).catch(() => {});
     return () => { cancelled = true; };
   }, [orderId, getOrder]);
 

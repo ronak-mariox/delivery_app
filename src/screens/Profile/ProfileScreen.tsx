@@ -1,62 +1,69 @@
 import React from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Avatar, Icon, IconName} from '../../components';
+import {Avatar, Badge, Icon, IconName} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
+import {driverName, useDriverAuth} from '../../context/DriverAuthContext';
+import {resolveAssetUrl} from '../../services/api';
+import {formatPhone, initialsOf, kycBadge, statusBadge, SUPPORT_EMAIL} from './driverDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
-const STATS = [
-  {value: '142', label: 'Total Deliveries'},
-  {value: '4.9★', label: 'Rating'},
-  {value: '94%', label: 'Acceptance'},
-  {value: '₹8,240/mo', label: 'Earnings'},
-];
-
 export function ProfileScreen({navigation}: Props) {
-  const profileItems: {icon: IconName; label: string; onPress?: () => void}[] = [
+  const {driver} = useDriverAuth();
+  const name = driverName(driver);
+  const avatarUri = resolveAssetUrl(driver?.avatarUrl);
+  const status = statusBadge(driver?.status);
+  const kyc = kycBadge(driver?.kycStatus);
+
+  const profileItems: {icon: IconName; label: string; onPress: () => void}[] = [
     {icon: 'user', label: 'Personal Information', onPress: () => navigation.navigate('ProfilePersonalInfo')},
+    {icon: 'home', label: 'Home Address', onPress: () => navigation.navigate('ProfileAddress')},
+    {icon: 'phone', label: 'Emergency Contact', onPress: () => navigation.navigate('ProfileEmergencyContact')},
     {icon: 'bicycle', label: 'Vehicle Details', onPress: () => navigation.navigate('VehicleHub')},
     {icon: 'file-text', label: 'Documents', onPress: () => navigation.navigate('DocumentsHub')},
     {icon: 'credit-card', label: 'Payment Details', onPress: () => navigation.navigate('PaymentHub')},
-    {icon: 'shield', label: 'Security', onPress: () => navigation.navigate('AccountSecurity')},
   ];
-  const accountItems: {icon: IconName; label: string; onPress?: () => void}[] = [
-    {icon: 'bell', label: 'Notification Settings', onPress: () => navigation.navigate('AccountNotificationSettings')},
-    {icon: 'map-pin', label: 'Location Settings', onPress: () => navigation.navigate('AccountLocationSettings')},
-    {icon: 'globe', label: 'Language & Region', onPress: () => navigation.navigate('AccountLanguageRegion')},
-    {icon: 'lock', label: 'Privacy', onPress: () => navigation.navigate('AccountPrivacy')},
+  const accountItems: {icon: IconName; label: string; onPress: () => void}[] = [
     {icon: 'help-circle', label: 'Help & Support', onPress: () => navigation.navigate('SupportHub')},
+    {icon: 'info', label: 'About', onPress: () => navigation.navigate('AccountAbout')},
+    {icon: 'file-text', label: 'Terms of Service', onPress: () => navigation.navigate('AccountTerms')},
+    {icon: 'lock', label: 'Privacy', onPress: () => navigation.navigate('AccountPrivacy')},
+    {icon: 'log-out', label: 'Log Out', onPress: () => navigation.navigate('AccountLogout')},
   ];
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.editBadge} activeOpacity={0.8} onPress={() => navigation.navigate('ProfileEdit')}>
-          <Icon name="edit" size={18} color={colors.white} />
-        </TouchableOpacity>
         <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('ProfilePhotoEdit')}>
           <View style={styles.avatarRing}>
-            <Avatar initials="RK" size={80} backgroundColor="rgba(255,255,255,0.25)" textColor={colors.white} />
+            {avatarUri ? (
+              <Image source={{uri: avatarUri}} style={styles.avatarImage} />
+            ) : (
+              <Avatar initials={initialsOf(name)} size={80} backgroundColor="rgba(255,255,255,0.25)" textColor={colors.white} />
+            )}
+          </View>
+          <View style={styles.cameraBadge}>
+            <Icon name="camera" size={14} color={colors.primary} />
           </View>
         </TouchableOpacity>
-        <Text style={styles.name}>Ravi Kumar</Text>
-        <View style={styles.metaRow}>
-          <Icon name="star" size={14} color={colors.white} filled />
-          <Text style={styles.metaText}>4.9 · Gold Rider · #VR-2024-087234</Text>
+        <Text style={styles.name}>{name}</Text>
+        <Text style={styles.phone}>{formatPhone(driver?.phone)}</Text>
+        <View style={styles.badgeRow}>
+          <Badge label={status.label} tone={status.tone} />
+          <Badge label={`KYC: ${kyc.label}`} tone={kyc.tone} />
         </View>
+        {driver?.referenceId ? <Text style={styles.reference}>Ref {driver.referenceId}</Text> : null}
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <View style={styles.statsGrid}>
-          {STATS.map(stat => (
-            <View key={stat.label} style={styles.statTile}>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
+        {driver?.status === 'rejected' && driver.rejectionReason ? (
+          <View style={styles.rejectionBanner}>
+            <Icon name="alert-triangle" size={16} color={colors.danger} />
+            <Text style={styles.rejectionText}>{driver.rejectionReason}</Text>
+          </View>
+        ) : null}
 
         <Text style={styles.sectionLabel}>PROFILE</Text>
         <View style={styles.card}>
@@ -64,8 +71,7 @@ export function ProfileScreen({navigation}: Props) {
             <TouchableOpacity
               key={item.label}
               style={[styles.row, index < profileItems.length - 1 && styles.rowBorder]}
-              activeOpacity={item.onPress ? 0.7 : 1}
-              disabled={!item.onPress}
+              activeOpacity={0.7}
               onPress={item.onPress}>
               <View style={styles.rowIcon}>
                 <Icon name={item.icon} size={18} color={colors.primary} />
@@ -82,8 +88,7 @@ export function ProfileScreen({navigation}: Props) {
             <TouchableOpacity
               key={item.label}
               style={[styles.row, index < accountItems.length - 1 && styles.rowBorder]}
-              activeOpacity={item.onPress ? 0.7 : 1}
-              disabled={!item.onPress}
+              activeOpacity={0.7}
               onPress={item.onPress}>
               <View style={styles.rowIconMuted}>
                 <Icon name={item.icon} size={18} color={colors.textSecondary} />
@@ -94,30 +99,18 @@ export function ProfileScreen({navigation}: Props) {
           ))}
         </View>
 
-        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>RIDER PERKS</Text>
-        <View style={styles.card}>
-          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => navigation.navigate('StateAccessDenied')}>
-            <View style={styles.rowIconMuted}>
-              <Icon name="lock" size={18} color={colors.textSecondary} />
+        <View style={[styles.card, styles.sectionLabelSpaced]}>
+          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => {})}>
+            <View style={styles.rowIcon}>
+              <Icon name="mail" size={18} color={colors.primary} />
             </View>
-            <Text style={styles.rowLabel}>Rider Council</Text>
+            <View style={styles.flex}>
+              <Text style={styles.rowLabel}>Contact support</Text>
+              <Text style={styles.rowSub}>Need to change your details or close your account? Email {SUPPORT_EMAIL}</Text>
+            </View>
             <Icon name="chevron-right" size={16} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
-
-        <View style={[styles.card, styles.sectionLabelSpaced]}>
-          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => navigation.navigate('DeactivateAccount')}>
-            <View style={styles.rowIconDanger}>
-              <Icon name="user-x" size={18} color={colors.danger} />
-            </View>
-            <Text style={styles.rowLabelDanger}>Deactivate Account</Text>
-            <Icon name="chevron-right" size={16} color={colors.danger} />
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('AccountAbout')}>
-          <Text style={styles.version}>Verdant Rider v3.2.1</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -126,36 +119,34 @@ export function ProfileScreen({navigation}: Props) {
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
   flex: {flex: 1},
-  header: {backgroundColor: colors.primary, alignItems: 'center', paddingTop: 52, paddingBottom: spacing.xxl},
-  editBadge: {
+  header: {backgroundColor: colors.primary, alignItems: 'center', paddingTop: 52, paddingBottom: spacing.xxl, paddingHorizontal: spacing.lg},
+  avatarRing: {borderWidth: 3, borderColor: 'rgba(255,255,255,0.6)', borderRadius: 44, padding: 2, overflow: 'hidden'},
+  avatarImage: {width: 80, height: 80, borderRadius: 40},
+  cameraBadge: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 34,
-    height: 34,
-    borderRadius: radius.sm,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    right: 0,
+    bottom: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarRing: {borderWidth: 3, borderColor: 'rgba(255,255,255,0.6)', borderRadius: 44, padding: 2},
   name: {...typography.h4, fontSize: 22, color: colors.white, marginTop: spacing.md},
-  metaRow: {flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.xs},
-  metaText: {...typography.label, fontSize: 13, color: 'rgba(255,255,255,0.85)'},
+  phone: {...typography.label, fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: spacing.xxs},
+  badgeRow: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm},
+  reference: {...typography.caption, color: 'rgba(255,255,255,0.75)', marginTop: spacing.sm},
   body: {padding: spacing.lg, paddingBottom: spacing.xxxl},
-  statsGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 1, backgroundColor: colors.border, borderRadius: radius.lg, overflow: 'hidden'},
-  statTile: {flexBasis: '49.7%', flexGrow: 1, backgroundColor: colors.surface, paddingVertical: spacing.md, alignItems: 'center'},
-  statValue: {...typography.h4, fontSize: 18, color: colors.textPrimary},
-  statLabel: {...typography.caption, fontSize: 11, color: colors.textSecondary, marginTop: 2},
+  rejectionBanner: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.dangerSurface, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radius.lg, padding: spacing.md},
+  rejectionText: {...typography.label, fontSize: 12, color: colors.dangerText, flex: 1},
   sectionLabel: {...typography.captionSemibold, fontSize: 11, color: colors.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase', marginTop: spacing.xl, marginBottom: spacing.xs},
   sectionLabelSpaced: {marginTop: spacing.xl},
   card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, overflow: 'hidden'},
-  row: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, height: 52},
+  row: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, minHeight: 52, paddingVertical: spacing.sm},
   rowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
   rowIcon: {width: 32, height: 32, borderRadius: radius.sm, backgroundColor: colors.primarySurface, alignItems: 'center', justifyContent: 'center'},
   rowIconMuted: {width: 32, height: 32, borderRadius: radius.sm, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center'},
-  rowIconDanger: {width: 32, height: 32, borderRadius: radius.sm, backgroundColor: '#FEF3F2', alignItems: 'center', justifyContent: 'center'},
   rowLabel: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary, flex: 1},
-  rowLabelDanger: {...typography.bodyMedium, fontSize: 14, color: colors.danger, flex: 1},
-  version: {...typography.caption, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl},
+  rowSub: {...typography.caption, fontSize: 11, color: colors.textSecondary, marginTop: 2},
 });

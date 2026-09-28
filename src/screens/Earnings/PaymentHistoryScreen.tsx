@@ -1,113 +1,67 @@
-import React, {useState} from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useCallback, useState} from 'react';
+import {RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {IconBackButton} from '../../components';
+import {Button, ErrorState, IconBackButton, Loader} from '../../components';
 import {colors, radius, shadows, spacing, typography} from '../../theme';
+import {getApiErrorMessage} from '../../services/api';
+import {getEarningsHistory, getPayoutStatus, LedgerEntry, Paged} from '../../services/driverApi';
+import {formatLongDate, formatMoney, useAsyncData} from './earningsShared';
+import {LedgerList} from './LedgerList';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentHistory'>;
 
-type Status = 'pending' | 'scheduled' | 'paid';
-
-interface HistoryRow {
-  id: string;
-  period: 'This Week' | 'Last Week';
-  dateLabel: string;
-  subLabel: string;
-  amount: string;
-  status: Status;
-  detail?: {deliveries: string; breakdown: string; method: string; reference: string};
-}
-
-const HISTORY: HistoryRow[] = [
-  {id: 'row1', period: 'This Week', dateLabel: 'Sep 6', subLabel: 'Today', amount: '₹428', status: 'pending'},
-  {id: 'row2', period: 'This Week', dateLabel: 'Sep 1–5', subLabel: 'Payout Mon Sep 8', amount: '₹856', status: 'scheduled'},
-  {
-    id: 'row3',
-    period: 'Last Week',
-    dateLabel: 'Aug 25–31',
-    subLabel: 'Paid Aug 30',
-    amount: '₹1,146',
-    status: 'paid',
-    detail: {deliveries: '16 deliveries', breakdown: 'Base ₹720 · Bonuses ₹426', method: 'UPI · HDFC ****1234', reference: 'TXN-8840291'},
-  },
-  {id: 'row4', period: 'Last Week', dateLabel: 'Aug 18–24', subLabel: 'Paid Aug 23', amount: '₹1,084', status: 'paid'},
-];
-
-const STATUS_META: Record<Status, {label: string; bg: string; text: string}> = {
-  pending: {label: 'PENDING', bg: '#FFFAEB', text: '#B45309'},
-  scheduled: {label: 'SCHEDULED', bg: '#EFF6FF', text: '#1D4ED8'},
-  paid: {label: 'PAID', bg: colors.primarySurface, text: colors.primaryDark},
-};
-
 type Filter = 'All' | 'Paid' | 'Pending';
 const FILTERS: Filter[] = ['All', 'Paid', 'Pending'];
+const PAGE_SIZE = 30;
 
-function matchesFilter(row: HistoryRow, filter: Filter) {
+function matchesFilter(entry: LedgerEntry, filter: Filter) {
   if (filter === 'All') {
     return true;
   }
   if (filter === 'Paid') {
-    return row.status === 'paid';
+    return entry.status === 'paid';
   }
-  return row.status === 'pending' || row.status === 'scheduled';
+  return entry.status === 'pending' || entry.status === 'settled';
+}
+
+async function loadHistory() {
+  const [payout, history] = await Promise.all([getPayoutStatus(), getEarningsHistory(1, PAGE_SIZE)]);
+  return {payout, history};
 }
 
 export function PaymentHistoryScreen({navigation}: Props) {
-  const [filter, setFilter] = useState<Filter>('Paid');
+  const [filter, setFilter] = useState<Filter>('All');
+  const [extraPages, setExtraPages] = useState<Paged<LedgerEntry>[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
-  const thisWeek = HISTORY.filter(r => r.period === 'This Week' && matchesFilter(r, filter));
-  const lastWeek = HISTORY.filter(r => r.period === 'Last Week' && matchesFilter(r, filter));
+  const loader = useCallback(async () => {
+    setExtraPages([]);
+    setLoadMoreError(null);
+    return loadHistory();
+  }, []);
+  const {data, loading, refreshing, error, reload} = useAsyncData(loader);
 
-  const renderRow = (row: HistoryRow, index: number, total: number) => {
-    const meta = STATUS_META[row.status];
-    const content = (
-      <>
-        <View style={styles.rowHeader}>
-          <View>
-            <Text style={styles.rowDate}>{row.dateLabel}</Text>
-            <Text style={styles.rowSub}>{row.subLabel}</Text>
-          </View>
-          <View style={styles.rowMeta}>
-            <Text style={styles.rowAmount}>{row.amount}</Text>
-            <View style={[styles.statusPill, {backgroundColor: meta.bg}]}>
-              <Text style={[styles.statusPillText, {color: meta.text}]}>{meta.label}</Text>
-            </View>
-          </View>
-        </View>
-        {row.detail && (
-          <View style={styles.detailBox}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailText}>{row.detail.deliveries}</Text>
-              <Text style={styles.detailText}>{row.detail.breakdown}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailText}>Payment method</Text>
-              <Text style={styles.detailValue}>{row.detail.method}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailText}>Reference</Text>
-              <Text style={styles.detailValue}>{row.detail.reference}</Text>
-            </View>
-          </View>
-        )}
-      </>
-    );
+  const lastPage = extraPages.length > 0 ? extraPages[extraPages.length - 1] : data?.history;
+  const hasMore = Boolean(lastPage && lastPage.page < lastPage.totalPages);
+  const entries = [...(data?.history.items ?? []), ...extraPages.flatMap(p => p.items)];
+  const visible = entries.filter(e => matchesFilter(e, filter));
 
-    const rowStyle = [styles.row, index < total - 1 && styles.rowBorder];
-
-    if (row.status === 'paid') {
-      return (
-        <TouchableOpacity key={row.id} style={rowStyle} activeOpacity={0.7} onPress={() => navigation.navigate('PayoutSuccessful')}>
-          {content}
-        </TouchableOpacity>
-      );
+  const loadMore = async () => {
+    if (!lastPage || loadingMore) {
+      return;
     }
-    return (
-      <View key={row.id} style={rowStyle}>
-        {content}
-      </View>
-    );
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const next = await getEarningsHistory(lastPage.page + 1, PAGE_SIZE);
+      setExtraPages(prev => [...prev, next]);
+    } catch (err) {
+      setLoadMoreError(getApiErrorMessage(err));
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   return (
@@ -117,38 +71,59 @@ export function PaymentHistoryScreen({navigation}: Props) {
         <Text style={styles.headerTitle}>Payment History</Text>
       </View>
 
-      <View style={styles.filterRow}>
-        {FILTERS.map(f => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterPill, filter === f && styles.filterPillActive]}
-            activeOpacity={0.8}
-            onPress={() => setFilter(f)}>
-            <Text style={[styles.filterPillText, filter === f && styles.filterPillTextActive]}>{f}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {loading && <Loader fullscreen label="Loading payment history…" />}
 
-      <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        {thisWeek.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>THIS WEEK</Text>
-            <View style={styles.card}>{thisWeek.map((row, i) => renderRow(row, i, thisWeek.length))}</View>
+      {!loading && !data && <ErrorState title="Could not load payment history" description={error ?? undefined} onRetry={() => reload()} />}
+
+      {!loading && data && (
+        <>
+          <View style={styles.filterRow}>
+            {FILTERS.map(f => (
+              <TouchableOpacity key={f} style={[styles.filterPill, filter === f && styles.filterPillActive]} activeOpacity={0.8} onPress={() => setFilter(f)}>
+                <Text style={[styles.filterPillText, filter === f && styles.filterPillTextActive]}>{f}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        )}
 
-        {lastWeek.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>LAST WEEK</Text>
-            <View style={styles.card}>{lastWeek.map((row, i) => renderRow(row, i, lastWeek.length))}</View>
-          </View>
-        )}
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.body}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => reload(true)} />}>
+            <View style={styles.payoutCard}>
+              <Text style={styles.payoutTitle}>Payout status</Text>
+              <View style={styles.payoutRow}>
+                <Text style={styles.payoutLabel}>Pending payout</Text>
+                <Text style={styles.payoutValueStrong}>{formatMoney(data.payout.pendingAmount)}</Text>
+              </View>
+              <View style={styles.payoutRow}>
+                <Text style={styles.payoutLabel}>Lifetime paid</Text>
+                <Text style={styles.payoutValue}>{formatMoney(data.payout.lifetimePaid)}</Text>
+              </View>
+              <View style={styles.payoutRow}>
+                <Text style={styles.payoutLabel}>Next payout</Text>
+                <Text style={styles.payoutValue}>{formatLongDate(data.payout.nextPayoutDate)}</Text>
+              </View>
+              <Text style={styles.payoutNote}>Payouts are sent automatically to your registered bank account or UPI.</Text>
+            </View>
 
-        <View style={styles.totalBanner}>
-          <Text style={styles.totalLabel}>Total paid this month</Text>
-          <Text style={styles.totalValue}>₹8,240</Text>
-        </View>
-      </ScrollView>
+            <LedgerList
+              entries={visible}
+              emptyTitle={filter === 'All' ? 'No transactions yet' : `No ${filter.toLowerCase()} transactions`}
+              emptyDescription="Your earnings and payouts will appear here."
+              onPressOrder={orderId => navigation.navigate('DeliveryEarnings', {orderId})}
+              footer={
+                hasMore || loadMoreError ? (
+                  <View style={styles.loadMore}>
+                    {loadMoreError ? <Text style={styles.loadMoreError}>{loadMoreError}</Text> : null}
+                    <Button label="Load more" variant="ghost" loading={loadingMore} onPress={loadMore} />
+                  </View>
+                ) : null
+              }
+            />
+          </ScrollView>
+        </>
+      )}
     </View>
   );
 }
@@ -174,31 +149,13 @@ const styles = StyleSheet.create({
   filterPillText: {...typography.labelSemibold, fontSize: 13, color: colors.textSecondary},
   filterPillTextActive: {color: colors.white},
   body: {padding: spacing.lg, paddingTop: spacing.md, gap: spacing.md, paddingBottom: spacing.xxxl},
-  section: {gap: spacing.sm},
-  sectionLabel: {...typography.captionMedium, fontSize: 12, color: colors.textSecondary, letterSpacing: 0.5, textTransform: 'uppercase'},
-  card: {backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden', ...shadows.sm},
-  row: {paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
-  rowBorder: {borderBottomWidth: 1, borderBottomColor: colors.border},
-  rowHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'},
-  rowDate: {...typography.bodySemibold, fontSize: 14, color: colors.textPrimary},
-  rowSub: {...typography.caption, color: colors.textSecondary, marginTop: 2},
-  rowMeta: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
-  rowAmount: {...typography.bodyBold, fontSize: 14, color: colors.textPrimary},
-  statusPill: {borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 3},
-  statusPillText: {...typography.captionSemibold, fontSize: 11},
-  detailBox: {backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.md, gap: spacing.xs},
-  detailRow: {flexDirection: 'row', justifyContent: 'space-between'},
-  detailText: {...typography.caption, color: colors.textSecondary},
-  detailValue: {...typography.captionMedium, color: colors.textPrimary},
-  totalBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.primarySurface,
-    borderRadius: radius.xl,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  totalLabel: {...typography.labelSemibold, fontSize: 13, color: colors.primaryDark},
-  totalValue: {...typography.bodyBold, fontSize: 16, color: colors.primaryDark},
+  payoutCard: {backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg, gap: spacing.sm, ...shadows.sm},
+  payoutTitle: {...typography.labelSemibold, fontSize: 13, color: colors.textPrimary},
+  payoutRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+  payoutLabel: {...typography.label, fontSize: 13, color: colors.textSecondary},
+  payoutValue: {...typography.labelSemibold, fontSize: 13, color: colors.textPrimary},
+  payoutValueStrong: {...typography.bodyBold, fontSize: 14, color: colors.primary},
+  payoutNote: {...typography.caption, color: colors.textMuted, marginTop: spacing.xxs},
+  loadMore: {alignItems: 'center', paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: '#F3F4F6', gap: spacing.xs},
+  loadMoreError: {...typography.caption, color: colors.dangerText, textAlign: 'center', paddingHorizontal: spacing.lg},
 });

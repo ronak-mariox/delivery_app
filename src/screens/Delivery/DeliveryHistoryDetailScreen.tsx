@@ -43,9 +43,9 @@ export function DeliveryHistoryDetailScreen({route, navigation}: Props) {
     let cancelled = false;
     setLoading(true);
     getOrder(orderId)
-      .then(o => { if (!cancelled) setOrder(o); })
+      .then(o => { if (!cancelled) {setOrder(o);} })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => { if (!cancelled) {setLoading(false);} });
     return () => { cancelled = true; };
   }, [orderId, getOrder]);
 

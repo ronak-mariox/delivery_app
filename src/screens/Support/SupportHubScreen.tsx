@@ -4,6 +4,7 @@ import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Icon, IconName} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
+import {callSupport, emailSupport, SUPPORT_EMAIL, SUPPORT_PHONE_DISPLAY} from './supportContacts';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SupportHub'>;
 
@@ -13,6 +14,9 @@ type CategoryRoute =
   | 'SupportAccountIssues'
   | 'SupportDocumentIssues'
   | 'SupportVehicleIssues'
+  | 'SupportStoreIssues'
+  | 'SupportCustomerIssues'
+  | 'SupportTechnicalIssues'
   | 'SupportOtherIssues';
 
 const CATEGORIES: {label: string; icon: IconName; route: CategoryRoute}[] = [
@@ -21,6 +25,9 @@ const CATEGORIES: {label: string; icon: IconName; route: CategoryRoute}[] = [
   {label: 'Account Issue', icon: 'user', route: 'SupportAccountIssues'},
   {label: 'Document Issue', icon: 'file-text', route: 'SupportDocumentIssues'},
   {label: 'Vehicle Issue', icon: 'wrench', route: 'SupportVehicleIssues'},
+  {label: 'Store Issue', icon: 'store', route: 'SupportStoreIssues'},
+  {label: 'Customer Issue', icon: 'user-x', route: 'SupportCustomerIssues'},
+  {label: 'Technical Issue', icon: 'smartphone', route: 'SupportTechnicalIssues'},
   {label: 'Other', icon: 'help-circle', route: 'SupportOtherIssues'},
 ];
 
@@ -33,12 +40,13 @@ export function SupportHubScreen({navigation}: Props) {
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity style={styles.searchBar} activeOpacity={0.85} onPress={() => navigation.navigate('SupportSelectIssueType')}>
-          <Icon name="search" size={18} color={colors.textMuted} />
-          <Text style={styles.searchPlaceholder}>Search for help…</Text>
+        <TouchableOpacity style={styles.faqBar} activeOpacity={0.85} onPress={() => navigation.navigate('SupportFaq')}>
+          <Icon name="help-circle" size={18} color={colors.primary} />
+          <Text style={styles.faqBarText}>Browse frequently asked questions</Text>
+          <Icon name="chevron-right" size={18} color={colors.textMuted} />
         </TouchableOpacity>
 
-        <Text style={styles.sectionTitle}>Issue Categories</Text>
+        <Text style={styles.sectionTitle}>Help by topic</Text>
         <View style={styles.grid}>
           {CATEGORIES.map(cat => (
             <TouchableOpacity key={cat.label} style={styles.categoryCard} activeOpacity={0.8} onPress={() => navigation.navigate(cat.route)}>
@@ -50,28 +58,33 @@ export function SupportHubScreen({navigation}: Props) {
           ))}
         </View>
 
-        <View style={styles.statsBanner}>
-          <Text style={styles.statsBannerText}>Avg response: 2 min · 98% resolution rate · 24/7 support</Text>
+        <Text style={styles.sectionTitle}>Contact us</Text>
+        <View style={styles.contactCard}>
+          <TouchableOpacity style={[styles.contactRow, styles.contactRowBorder]} activeOpacity={0.7} onPress={callSupport}>
+            <Icon name="phone" size={18} color={colors.primary} />
+            <View style={styles.contactText}>
+              <Text style={styles.contactLabel}>Call support</Text>
+              <Text style={styles.contactValue}>{SUPPORT_PHONE_DISPLAY}</Text>
+            </View>
+            <Icon name="chevron-right" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.contactRow} activeOpacity={0.7} onPress={() => emailSupport()}>
+            <Icon name="mail" size={18} color={colors.primary} />
+            <View style={styles.contactText}>
+              <Text style={styles.contactLabel}>Email support</Text>
+              <Text style={styles.contactValue}>{SUPPORT_EMAIL}</Text>
+            </View>
+            <Icon name="chevron-right" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
         </View>
-
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
-        <TouchableOpacity style={styles.activityRow} activeOpacity={0.7} onPress={() => navigation.navigate('TicketStatus')}>
-          <View>
-            <Text style={styles.activityTitle}>Ticket #ISS-29847</Text>
-            <Text style={styles.activitySub}>Sep 6 · Customer Unreachable</Text>
-          </View>
-          <View style={styles.resolvedPill}>
-            <Text style={styles.resolvedPillText}>Resolved</Text>
-          </View>
-        </TouchableOpacity>
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85}>
-          <Text style={styles.primaryButtonText}>Start Live Chat</Text>
+        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85} onPress={callSupport}>
+          <Text style={styles.primaryButtonText}>Call Support</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85}>
-          <Text style={styles.outlineButtonText}>Call Support</Text>
+        <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85} onPress={() => emailSupport()}>
+          <Text style={styles.outlineButtonText}>Email Support</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -85,8 +98,8 @@ const styles = StyleSheet.create({
   heroTitle: {...typography.h3, fontSize: 22, color: colors.white},
   heroSubtitle: {...typography.body, fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: spacing.xs},
   body: {padding: spacing.lg, gap: spacing.md, paddingBottom: 100},
-  searchBar: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
-  searchPlaceholder: {...typography.body, fontSize: 14, color: colors.textMuted},
+  faqBar: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
+  faqBarText: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary, flex: 1},
   sectionTitle: {...typography.bodySemibold, fontSize: 15, color: colors.textPrimary, marginTop: spacing.xs},
   grid: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md},
   categoryCard: {
@@ -102,23 +115,12 @@ const styles = StyleSheet.create({
   },
   categoryIcon: {width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primarySurface, alignItems: 'center', justifyContent: 'center'},
   categoryLabel: {...typography.bodyMedium, fontSize: 13, color: colors.textPrimary, textAlign: 'center'},
-  statsBanner: {backgroundColor: colors.primarySurface, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center'},
-  statsBannerText: {...typography.captionMedium, fontSize: 12, color: '#13845A'},
-  activityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  activityTitle: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary},
-  activitySub: {...typography.caption, fontSize: 12, color: colors.textSecondary, marginTop: 2},
-  resolvedPill: {backgroundColor: colors.primarySurface, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 4},
-  resolvedPillText: {...typography.captionSemibold, fontSize: 12, color: colors.primary},
+  contactCard: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, overflow: 'hidden'},
+  contactRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
+  contactRowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
+  contactText: {flex: 1},
+  contactLabel: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary},
+  contactValue: {...typography.caption, fontSize: 12, color: colors.textSecondary, marginTop: 2},
   bottomBar: {
     position: 'absolute',
     left: 0,

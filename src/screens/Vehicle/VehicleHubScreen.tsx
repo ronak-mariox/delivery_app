@@ -2,88 +2,99 @@ import React from 'react';
 import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Icon} from '../../components';
+import {Badge, EmptyState, Icon, IconBackButton, InfoBanner} from '../../components';
 import {colors, radius, shadows, spacing, typography} from '../../theme';
+import {useDriverAuth} from '../../context/DriverAuthContext';
+import {ContactSupport} from '../Profile/ContactSupport';
+import {documentUrl, formatDate, isExpired, kycBadge, VEHICLE_TYPE_ICON, VEHICLE_TYPE_LABEL} from '../Profile/driverDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleHub'>;
 
-const INFO_ROWS = [
-  {label: 'Vehicle Type', value: 'Motorbike'},
-  {label: 'Registration No', value: 'KA-01-AB-1234'},
-  {label: 'Brand / Model', value: 'Honda Activa 6G'},
-  {label: 'Fuel Type', value: 'Petrol'},
-  {label: 'Colour', value: 'Red'},
-  {label: 'Engine (CC)', value: '109.5 cc'},
-];
-
 export function VehicleHubScreen({navigation}: Props) {
+  const {driver} = useDriverAuth();
+  const vehicle = driver?.vehicleDetails;
+  const insurance = driver?.insuranceDetails;
+  const vehicleType = driver?.vehicleType ?? null;
+  const kyc = kycBadge(driver?.kycStatus);
+  const hasRc = !!documentUrl(driver, 'rc');
+  const hasInsuranceDoc = !!documentUrl(driver, 'insurance');
+  const insuranceExpired = isExpired(insurance?.validUntil);
+
+  const infoRows = [
+    {label: 'Vehicle Type', value: vehicleType ? VEHICLE_TYPE_LABEL[vehicleType] : '—'},
+    {label: 'Registration No', value: vehicle?.registrationNumber || '—'},
+    {label: 'Brand / Model', value: vehicle ? `${vehicle.brand} ${vehicle.model}`.trim() : '—'},
+    {label: 'Year', value: vehicle?.year ? String(vehicle.year) : '—'},
+    {label: 'Fuel Type', value: vehicle?.fuelType || '—'},
+    {label: 'Colour', value: vehicle?.color || '—'},
+    ...(vehicle?.capacity ? [{label: 'Capacity', value: vehicle.capacity}] : []),
+  ];
+
+  const docRows = [
+    {
+      title: 'RC Document',
+      sub: hasRc ? 'Uploaded' : 'Not uploaded',
+      present: hasRc,
+      onPress: () => navigation.navigate('VehicleRcDocument'),
+    },
+    {
+      title: 'Insurance',
+      sub: insurance ? (insuranceExpired ? `Expired ${formatDate(insurance.validUntil)}` : `Valid until ${formatDate(insurance.validUntil)}`) : hasInsuranceDoc ? 'Uploaded' : 'Not uploaded',
+      present: hasInsuranceDoc && !insuranceExpired,
+      onPress: () => navigation.navigate('VehicleInsurance'),
+    },
+  ];
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Icon name="chevron-left" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <IconBackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Vehicle Details</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('VehicleEdit')}>
-          <Text style={styles.editLink}>Edit</Text>
-        </TouchableOpacity>
+        <Badge label={kyc.label} tone={kyc.tone} />
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity activeOpacity={0.8} style={styles.verificationBanner} onPress={() => navigation.navigate('StateVerificationFailed')}>
-          <Icon name="alert-triangle" size={16} color={colors.danger} />
-          <Text style={styles.verificationBannerText}>Some documents need re-verification — view status</Text>
-        </TouchableOpacity>
+        {insuranceExpired ? (
+          <InfoBanner tone="warning" icon="alert-triangle" title="Insurance expired" description="Your vehicle insurance has expired. Contact support to update your policy." />
+        ) : null}
 
-        <View style={styles.hero}>
-          <Icon name="motorbike" size={40} color={colors.white} />
-          <Text style={styles.heroLabel}>MOTORBIKE</Text>
-          <Text style={styles.heroValue}>Honda Activa 6G · Red · KA-01 AB-1234</Text>
-        </View>
+        {vehicle || vehicleType ? (
+          <>
+            <TouchableOpacity style={styles.hero} activeOpacity={0.85} onPress={() => navigation.navigate('VehicleRegistration')}>
+              <Icon name={vehicleType ? VEHICLE_TYPE_ICON[vehicleType] : 'truck'} size={40} color={colors.white} />
+              <Text style={styles.heroLabel}>{vehicleType ? VEHICLE_TYPE_LABEL[vehicleType] : 'Vehicle'}</Text>
+              <Text style={styles.heroValue}>{[vehicle?.brand, vehicle?.model, vehicle?.color, vehicle?.registrationNumber].filter(Boolean).join(' · ') || 'Details pending'}</Text>
+            </TouchableOpacity>
 
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>VEHICLE INFO</Text>
-          {INFO_ROWS.map((row, index) => (
-            <View key={row.label} style={[styles.infoRow, index < INFO_ROWS.length - 1 && styles.infoRowBorder]}>
-              <Text style={styles.infoLabel}>{row.label}</Text>
-              <Text style={styles.infoValue}>{row.value}</Text>
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>VEHICLE INFO</Text>
+              {infoRows.map((row, index) => (
+                <View key={row.label} style={[styles.infoRow, index < infoRows.length - 1 && styles.infoRowBorder]}>
+                  <Text style={styles.infoLabel}>{row.label}</Text>
+                  <Text style={styles.infoValue}>{row.value}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        ) : (
+          <EmptyState icon="bicycle" title="No vehicle on file" description="Vehicle details were not captured during registration." />
+        )}
 
         <View style={styles.card}>
           <Text style={styles.cardLabel}>DOCUMENTS</Text>
-          <TouchableOpacity style={[styles.docRow, styles.docRowBorder]} activeOpacity={0.7} onPress={() => navigation.navigate('VehicleRcDocument')}>
-            <Icon name="check-circle" size={16} color={colors.primary} />
-            <View>
-              <Text style={styles.docTitle}>RC Document</Text>
-              <Text style={styles.docSubGreen}>Verified</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.docRow, styles.docRowBorder]} activeOpacity={0.7} onPress={() => navigation.navigate('VehicleInsurance')}>
-            <Icon name="alert-triangle" size={16} color={colors.warning} />
-            <View>
-              <Text style={styles.docTitle}>Insurance</Text>
-              <Text style={styles.docSubWarning}>Expires Sep 13, 2026</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.docRow} activeOpacity={0.7} onPress={() => navigation.navigate('DocumentOther')}>
-            <Icon name="check-circle" size={16} color={colors.primary} />
-            <View>
-              <Text style={styles.docTitle}>Pollution Certificate</Text>
-              <Text style={styles.docSub}>Valid</Text>
-            </View>
-          </TouchableOpacity>
+          {docRows.map((row, index) => (
+            <TouchableOpacity key={row.title} style={[styles.docRow, index < docRows.length - 1 && styles.docRowBorder]} activeOpacity={0.7} onPress={row.onPress}>
+              <Icon name={row.present ? 'check-circle' : 'alert-circle'} size={16} color={row.present ? colors.primary : colors.warning} />
+              <View style={styles.flex}>
+                <Text style={styles.docTitle}>{row.title}</Text>
+                <Text style={[styles.docSub, !row.present && styles.docSubWarning]}>{row.sub}</Text>
+              </View>
+              <Icon name="chevron-right" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          ))}
         </View>
 
-        <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.editButton} activeOpacity={0.85} onPress={() => navigation.navigate('VehicleEdit')}>
-            <Text style={styles.editButtonText}>Edit Vehicle Details</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.updateButton} activeOpacity={0.85} onPress={() => navigation.navigate('VehicleInsurance')}>
-            <Text style={styles.updateButtonText}>Update Documents</Text>
-          </TouchableOpacity>
-        </View>
+        <ContactSupport description="To change your vehicle or its documents, contact support." />
       </ScrollView>
     </View>
   );
@@ -95,7 +106,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.md,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -103,29 +114,20 @@ const styles = StyleSheet.create({
     paddingTop: 52,
     paddingBottom: spacing.md,
   },
-  headerTitle: {...typography.title, fontSize: 17, color: colors.textPrimary},
-  editLink: {...typography.bodyMedium, fontSize: 14, color: colors.primary},
+  headerTitle: {...typography.title, fontSize: 17, color: colors.textPrimary, flex: 1},
   body: {padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl},
-  verificationBanner: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.dangerSurface, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radius.lg, padding: spacing.md},
-  verificationBannerText: {...typography.label, fontSize: 12, color: colors.danger, flex: 1},
-  hero: {backgroundColor: colors.primary, borderRadius: radius.xxl, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl, gap: spacing.xs},
+  hero: {backgroundColor: colors.primary, borderRadius: radius.xxl, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.lg, gap: spacing.xs},
   heroLabel: {...typography.overline, fontSize: 11, color: 'rgba(255,255,255,0.8)', letterSpacing: 1, textTransform: 'uppercase'},
-  heroValue: {...typography.bodyBold, fontSize: 15, color: colors.white},
+  heroValue: {...typography.bodyBold, fontSize: 15, color: colors.white, textAlign: 'center'},
   card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, overflow: 'hidden', ...shadows.sm},
   cardLabel: {...typography.captionSemibold, fontSize: 11, color: colors.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', padding: spacing.lg, paddingBottom: spacing.sm},
-  infoRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
+  infoRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
   infoRowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
   infoLabel: {...typography.label, fontSize: 13, color: colors.textSecondary},
-  infoValue: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary},
+  infoValue: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary, flexShrink: 1, textAlign: 'right'},
   docRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
   docRowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
   docTitle: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary},
   docSub: {...typography.caption, color: colors.textSecondary, marginTop: 1},
-  docSubGreen: {...typography.caption, color: colors.textSecondary, marginTop: 1},
-  docSubWarning: {...typography.caption, color: colors.warning, marginTop: 1},
-  actionsRow: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm},
-  editButton: {flex: 1, borderWidth: 1.5, borderColor: colors.primary, borderRadius: radius.md, height: 46, alignItems: 'center', justifyContent: 'center'},
-  editButtonText: {...typography.bodySemibold, fontSize: 13, color: colors.primary},
-  updateButton: {flex: 1, borderWidth: 1.5, borderColor: colors.warning, borderRadius: radius.md, height: 46, alignItems: 'center', justifyContent: 'center'},
-  updateButtonText: {...typography.bodySemibold, fontSize: 13, color: colors.warning},
+  docSubWarning: {color: colors.warning},
 });

@@ -1,24 +1,17 @@
 import React, {useEffect, useState} from 'react';
 import {Alert, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import axios from 'axios';
 import {RootStackParamList} from '../../navigation/types';
 import {Button, Icon, IconBackButton, OtpInput, Screen} from '../../components';
 import {colors, spacing, typography} from '../../theme';
-import {useDriverAuth} from '../../context/DriverAuthContext';
-import {api, getApiErrorMessage} from '../../services/api';
+import {OtpVerifyResult, useDriverAuth} from '../../context/DriverAuthContext';
+import {api, getApiErrorMessage, getApiErrorBody, getApiErrorStatus} from '../../services/api';
+import {RegistrationStatus, routeForDriver, routeForDriverStatus} from '../../utils/driverRouting';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VerifyRegistrationOtp'>;
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 42;
-
-interface RegistrationStatusResponse {
-  status: 'pending' | 'active' | 'suspended' | 'rejected';
-  kycStatus: 'pending' | 'verified' | 'rejected';
-  referenceId?: string;
-  rejectionReason?: string | null;
-}
 
 export function VerifyRegistrationOtpScreen({route, navigation}: Props) {
   const {mobile, flow = 'register'} = route.params;
@@ -39,28 +32,17 @@ export function VerifyRegistrationOtpScreen({route, navigation}: Props) {
 
   const formattedTime = `00:${String(secondsLeft).padStart(2, '0')}`;
 
-  const routeAfterExistingDriverVerify = async () => {
+  const routeAfterExistingDriverVerify = async (verifiedDriver: OtpVerifyResult['driver']) => {
+    let target = routeForDriver(verifiedDriver);
     try {
-      const {data} = await api.get<RegistrationStatusResponse>('/driver/registration/status');
-      switch (data.status) {
-        case 'active':
-          navigation.reset({index: 0, routes: [{name: 'Home'}]});
-          return;
-        case 'pending':
-          navigation.navigate('VerificationInProgress');
-          return;
-        case 'rejected':
-          navigation.navigate('VerificationRejected');
-          return;
-        case 'suspended':
-          navigation.navigate('AccountRestricted');
-          return;
-        default:
-          navigation.navigate('VerificationInProgress');
-      }
+      const {data} = await api.get<RegistrationStatus>('/driver/registration/status');
+      target = routeForDriverStatus(data, mobile);
     } catch (err) {
-      Alert.alert('Could not load account status', getApiErrorMessage(err));
+      if (getApiErrorStatus(err) !== 403) {
+        Alert.alert('Could not load account status', getApiErrorMessage(err));
+      }
     }
+    navigation.reset({index: 0, routes: [{name: target.name, params: target.params} as never]});
   };
 
   const handleVerify = async () => {
@@ -73,21 +55,25 @@ export function VerifyRegistrationOtpScreen({route, navigation}: Props) {
       if (result.isNewDriver) {
         navigation.navigate('PersonalInformation', {mobile});
       } else {
-        await routeAfterExistingDriverVerify();
+        await routeAfterExistingDriverVerify(result.driver);
       }
     } catch (err) {
-      if (flow === 'login' && axios.isAxiosError(err) && err.response?.status === 404 && err.response?.data?.reason === 'account_not_found') {
-        Alert.alert(
-          'Account Not Found',
-          "We couldn't find a rider account for this number. Please register first to continue.",
-          [
-            {text: 'Try Different Number', style: 'cancel', onPress: () => navigation.navigate('Login')},
-            {text: 'Register Now', onPress: () => navigation.navigate('RegistrationLanding')},
-          ],
-        );
+      const status = getApiErrorStatus(err);
+      const body = getApiErrorBody(err);
+      if (flow === 'login' && status === 404 && body?.reason === 'account_not_found') {
+        navigation.navigate('AccountNotFound', {mobile});
         return;
       }
-      navigation.navigate('IncorrectOtp', {mobile, flow, reason: getApiErrorMessage(err, 'The code you entered doesn\'t match. Please check and try again.')});
+      if (status === 403) {
+        navigation.reset({index: 0, routes: [{name: 'AccountRestricted'}]});
+        return;
+      }
+      navigation.navigate('IncorrectOtp', {
+        mobile,
+        flow,
+        reason: getApiErrorMessage(err, "The code you entered doesn't match. Please check and try again."),
+        attemptsLeft: typeof body?.attemptsLeft === 'number' ? body.attemptsLeft : undefined,
+      });
     } finally {
       setVerifying(false);
     }

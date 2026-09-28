@@ -9,7 +9,7 @@ import {DeliveryOrder, useOrders} from '../../context/OrdersContext';
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryFailed'>;
 
 function formatTime(iso?: string): string | null {
-  if (!iso) return null;
+  if (!iso) {return null;}
   return new Date(iso).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
 }
 
@@ -19,11 +19,11 @@ export function DeliveryFailedScreen({route, navigation}: Props) {
   const [order, setOrder] = useState<DeliveryOrder | null>(passedOrder ?? null);
 
   useEffect(() => {
-    if (passedOrder) return;
+    if (passedOrder) {return;}
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {

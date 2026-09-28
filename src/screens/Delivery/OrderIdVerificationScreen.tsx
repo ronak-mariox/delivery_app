@@ -12,8 +12,9 @@ export function OrderIdVerificationScreen({route, navigation}: Props) {
   const {orderId} = route.params;
   const {getOrder} = useOrders();
   const [order, setOrder] = useState<DeliveryOrder | null>(null);
-  const [manualId, setManualId] = useState(orderId);
+  const [manualId, setManualId] = useState('');
   const [verified, setVerified] = useState(false);
+  const [mismatch, setMismatch] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,7 +22,6 @@ export function OrderIdVerificationScreen({route, navigation}: Props) {
       .then((o) => {
         if (!cancelled) {
           setOrder(o);
-          setManualId(o.orderNumber);
         }
       })
       .catch(() => {});
@@ -30,10 +30,13 @@ export function OrderIdVerificationScreen({route, navigation}: Props) {
     };
   }, [orderId, getOrder]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setVerified(true), 1600);
-    return () => clearTimeout(timer);
-  }, []);
+  const handleVerify = () => {
+    const typed = manualId.replace(/[^a-z0-9]/gi, '').toUpperCase();
+    const expected = (order?.orderNumber ?? '').replace(/[^a-z0-9]/gi, '').toUpperCase();
+    const ok = !!expected && typed.length >= 4 && (typed === expected || expected.endsWith(typed));
+    setVerified(ok);
+    setMismatch(!ok);
+  };
 
   const itemCount = order?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
@@ -45,9 +48,8 @@ export function OrderIdVerificationScreen({route, navigation}: Props) {
           <View style={[styles.corner, styles.cornerTR]} />
           <View style={[styles.corner, styles.cornerBL]} />
           <View style={[styles.corner, styles.cornerBR]} />
-          {!verified && <View style={styles.scanLine} />}
         </View>
-        <Text style={styles.scanHint}>Point camera at QR code on order slip</Text>
+        <Text style={styles.scanHint}>Match the order number printed on the order slip</Text>
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
@@ -63,14 +65,17 @@ export function OrderIdVerificationScreen({route, navigation}: Props) {
             style={styles.manualInput}
             value={manualId}
             onChangeText={setManualId}
-            placeholder="VR-84821"
+            placeholder="Last 4–6 characters of the order number"
             placeholderTextColor={colors.textMuted}
             autoCapitalize="characters"
+            onSubmitEditing={handleVerify}
           />
-          <TouchableOpacity style={styles.verifyButton} activeOpacity={0.85} onPress={() => setVerified(true)}>
+          <TouchableOpacity style={styles.verifyButton} activeOpacity={0.85} onPress={handleVerify} disabled={!order}>
             <Text style={styles.verifyButtonText}>Verify</Text>
           </TouchableOpacity>
         </View>
+
+        {mismatch && <Text style={styles.mismatchText}>That doesn't match this order. Check the slip and try again.</Text>}
 
         {verified && (
           <View style={styles.verifiedCard}>
@@ -108,6 +113,7 @@ export function OrderIdVerificationScreen({route, navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
+  mismatchText: {...typography.caption, color: colors.danger, marginTop: spacing.sm},
   scanArea: {backgroundColor: colors.dark900, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.huge},
   viewfinder: {width: 220, height: 220, backgroundColor: colors.dark800, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center'},
   corner: {position: 'absolute', width: 24, height: 24, borderColor: colors.white},

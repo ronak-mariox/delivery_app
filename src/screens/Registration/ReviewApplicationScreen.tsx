@@ -206,7 +206,7 @@ export function ReviewApplicationScreen({route, navigation}: Props) {
         </View>
 
         {sections.map(section => (
-          <ReviewSection key={section.title} title={section.title} rows={section.rows} onEdit={() => navigation.navigate(section.editRoute as any, {mobile} as any)} />
+          <ReviewSection key={section.title} title={section.title} rows={section.rows} onEdit={() => (section.editRoute === 'PersonalInformation' ? navigation.navigate('PersonalInformation', {mobile}) : navigation.navigate(section.editRoute))} />
         ))}
 
         <TouchableOpacity style={styles.consentRow} activeOpacity={0.85} onPress={() => setConfirmed(c => !c)}>
