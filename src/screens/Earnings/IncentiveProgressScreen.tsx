@@ -1,48 +1,33 @@
-import React from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useCallback} from 'react';
+import {RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import Svg, {Circle} from 'react-native-svg';
 import {RootStackParamList} from '../../navigation/types';
-import {IconBackButton} from '../../components';
+import {EmptyState, ErrorState, IconBackButton, Loader} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
+import {getIncentiveProgress} from '../../services/driverApi';
+import {formatDate, formatMoney, incentiveEarned, incentiveProgressRatio, isIncentiveActive, isIncentiveCompleted, isIncentiveExpired, useAsyncData} from './earningsShared';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IncentiveProgress'>;
 
-const SEGMENTS = [
-  {label: 'Completed', pct: 40, color: colors.primary},
-  {label: 'In Progress', pct: 35, color: colors.warning},
-  {label: 'Expired', pct: 25, color: colors.borderStrong},
-];
-
-interface ActiveRow {
-  name: string;
-  progress: string;
-  reward: string;
-  status: 'inProgress' | 'almost';
-  target: 'IncentiveDetail' | 'IncentiveExpired' | null;
+interface Segment {
+  label: string;
+  count: number;
+  pct: number;
+  color: string;
 }
-
-const ACTIVE_ROWS: ActiveRow[] = [
-  {name: 'Peak Hour', progress: '10/15', reward: '₹150', status: 'inProgress', target: 'IncentiveDetail'},
-  {name: 'Weekend Surge', progress: '6/20', reward: '₹250', status: 'inProgress', target: 'IncentiveExpired'},
-  {name: 'On-time Streak', progress: '14/15', reward: '₹50', status: 'almost', target: null},
-];
-
-const COMPLETED_ROWS = [
-  {name: 'Monday Boost', date: 'Sep 2', earned: '₹80'},
-  {name: 'New Rider Week 2', date: 'Sep 1', earned: '₹200'},
-];
 
 const SIZE = 130;
 const STROKE = 18;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function Donut() {
+function Donut({segments}: {segments: Segment[]}) {
   let cumulative = 0;
   return (
     <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-      {SEGMENTS.map(seg => {
+      <Circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} stroke={colors.background} strokeWidth={STROKE} fill="none" />
+      {segments.map(seg => {
         const length = (seg.pct / 100) * CIRCUMFERENCE;
         const offset = CIRCUMFERENCE - cumulative;
         cumulative += length;
@@ -66,95 +51,143 @@ function Donut() {
 }
 
 export function IncentiveProgressScreen({navigation}: Props) {
+  const loader = useCallback(() => getIncentiveProgress(), []);
+  const {data, loading, refreshing, error, reload} = useAsyncData(loader);
+
+  const incentives = data ?? [];
+  const active = incentives.filter(i => isIncentiveActive(i));
+  const completed = incentives.filter(isIncentiveCompleted);
+  const expired = incentives.filter(i => isIncentiveExpired(i) && !isIncentiveCompleted(i));
+  const total = active.length + completed.length + expired.length;
+  const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
+  const segments: Segment[] = [
+    {label: 'Completed', count: completed.length, pct: pct(completed.length), color: colors.primary},
+    {label: 'In Progress', count: active.length, pct: pct(active.length), color: colors.warning},
+    {label: 'Expired', count: expired.length, pct: pct(expired.length), color: colors.borderStrong},
+  ];
+  const potential = active.reduce((sum, i) => sum + (i.rewardAmount ?? 0), 0);
+  const earned = completed.reduce((sum, i) => sum + incentiveEarned(i), 0);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <IconBackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Incentive Progress</Text>
-        <Text style={styles.headerDate}>Sep 6, 2026</Text>
+        <Text style={styles.headerDate}>{formatDate(new Date().toISOString())}</Text>
       </View>
 
-      <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <View style={styles.donutCard}>
-          <View style={styles.donutWrap}>
-            <Donut />
-            <View style={styles.donutCenter} pointerEvents="none">
-              <Text style={styles.donutCenterValue}>₹254</Text>
-              <Text style={styles.donutCenterLabel}>potential</Text>
-            </View>
-          </View>
-          <View style={styles.legend}>
-            {SEGMENTS.map(seg => (
-              <View key={seg.label} style={styles.legendRow}>
-                <View style={[styles.legendDot, {backgroundColor: seg.color}]} />
-                <Text style={styles.legendLabel}>{seg.label}</Text>
-                <Text style={styles.legendPct}>{seg.pct}%</Text>
-              </View>
-            ))}
-          </View>
-        </View>
+      {loading && <Loader fullscreen label="Loading incentive progress…" />}
 
-        <Text style={styles.sectionLabel}>ACTIVE INCENTIVES</Text>
-        <View style={styles.tableCard}>
-          <View style={styles.tableHeaderRow}>
-            <Text style={[styles.tableHeaderText, styles.colName]}>Incentive</Text>
-            <Text style={[styles.tableHeaderText, styles.colProgress]}>Progress</Text>
-            <Text style={[styles.tableHeaderText, styles.colReward]}>Reward</Text>
-            <Text style={[styles.tableHeaderText, styles.colStatus]}>Status</Text>
-          </View>
-          {ACTIVE_ROWS.map((row, index) => {
-            const content = (
-              <>
-                <Text style={[styles.tableCellStrong, styles.colName]}>{row.name}</Text>
-                <Text style={[styles.tableCellMuted, styles.colProgress]}>{row.progress}</Text>
-                <Text style={[styles.tableCellReward, styles.colReward]}>{row.reward}</Text>
-                <View style={[styles.colStatus, styles.statusPillWrap]}>
-                  <View style={[styles.statusPill, row.status === 'almost' && styles.statusPillAlmost]}>
-                    <Text style={[styles.statusPillText, row.status === 'almost' && styles.statusPillTextAlmost]}>
-                      {row.status === 'almost' ? 'Almost!' : 'In Progress'}
-                    </Text>
-                  </View>
+      {!loading && !data && <ErrorState title="Could not load progress" description={error ?? undefined} onRetry={() => reload()} />}
+
+      {!loading && data && total === 0 && (
+        <EmptyState icon="star" title="No incentives yet" description="Your progress will show here once incentives are available." />
+      )}
+
+      {!loading && data && total > 0 && (
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => reload(true)} />}>
+          <View style={styles.donutCard}>
+            <View style={styles.donutWrap}>
+              <Donut segments={segments} />
+              <View style={styles.donutCenter} pointerEvents="none">
+                <Text style={styles.donutCenterValue}>{formatMoney(potential)}</Text>
+                <Text style={styles.donutCenterLabel}>potential</Text>
+              </View>
+            </View>
+            <View style={styles.legend}>
+              {segments.map(seg => (
+                <View key={seg.label} style={styles.legendRow}>
+                  <View style={[styles.legendDot, {backgroundColor: seg.color}]} />
+                  <Text style={styles.legendLabel}>{seg.label}</Text>
+                  <Text style={styles.legendPct}>{`${seg.count} · ${seg.pct}%`}</Text>
                 </View>
-              </>
-            );
-            const rowStyle = [styles.tableRow, index < ACTIVE_ROWS.length - 1 && styles.tableRowBorder];
-            return row.target ? (
-              <TouchableOpacity key={row.name} style={rowStyle} activeOpacity={0.7} onPress={() => navigation.navigate(row.target as 'IncentiveDetail' | 'IncentiveExpired')}>
-                {content}
-              </TouchableOpacity>
-            ) : (
-              <View key={row.name} style={rowStyle}>
-                {content}
-              </View>
-            );
-          })}
-        </View>
-
-        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>COMPLETED THIS WEEK</Text>
-        <View style={styles.tableCard}>
-          <View style={styles.tableHeaderRow}>
-            <Text style={[styles.tableHeaderText, styles.colNameWide]}>Incentive</Text>
-            <Text style={[styles.tableHeaderText, styles.colDate]}>Completed</Text>
-            <Text style={[styles.tableHeaderText, styles.colDate]}>Earned</Text>
-          </View>
-          {COMPLETED_ROWS.map((row, index) => (
-            <View key={row.name} style={[styles.tableRow, index < COMPLETED_ROWS.length - 1 && styles.tableRowBorder]}>
-              <Text style={[styles.tableCellStrong, styles.colNameWide]}>{row.name}</Text>
-              <Text style={[styles.tableCellMuted, styles.colDate]}>{row.date}</Text>
-              <Text style={[styles.tableCellReward, styles.colDate]}>{row.earned}</Text>
+              ))}
             </View>
-          ))}
-        </View>
+          </View>
 
-        <View style={styles.summaryBanner}>
-          <Text style={styles.summaryText}>
-            Total potential remaining: <Text style={styles.summaryStrong}>₹254</Text>
-          </Text>
-          <Text style={[styles.summaryText, styles.summaryTextRight]}>
-            Earned this week: <Text style={styles.summaryStrong}>₹280</Text>
-          </Text>
-        </View>
-      </ScrollView>
+          <Text style={styles.sectionLabel}>ACTIVE INCENTIVES</Text>
+          <View style={styles.tableCard}>
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.tableHeaderText, styles.colName]}>Incentive</Text>
+              <Text style={[styles.tableHeaderText, styles.colProgress]}>Progress</Text>
+              <Text style={[styles.tableHeaderText, styles.colReward]}>Reward</Text>
+              <Text style={[styles.tableHeaderText, styles.colStatus]}>Status</Text>
+            </View>
+            {active.length === 0 && (
+              <View style={styles.tableEmptyRow}>
+                <Text style={styles.tableEmptyText}>No active incentives right now.</Text>
+              </View>
+            )}
+            {active.map((row, index) => {
+              const ratio = incentiveProgressRatio(row);
+              const almost = ratio >= 0.8;
+              return (
+                <TouchableOpacity
+                  key={row.id}
+                  style={[styles.tableRow, index < active.length - 1 && styles.tableRowBorder]}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('IncentiveDetail', {incentiveId: row.id})}>
+                  <Text style={[styles.tableCellStrong, styles.colName]} numberOfLines={1}>
+                    {row.title}
+                  </Text>
+                  <Text style={[styles.tableCellMuted, styles.colProgress]}>{`${row.progress?.currentProgress ?? 0}/${row.targetDeliveries}`}</Text>
+                  <Text style={[styles.tableCellReward, styles.colReward]}>{formatMoney(row.rewardAmount)}</Text>
+                  <View style={[styles.colStatus, styles.statusPillWrap]}>
+                    <View style={[styles.statusPill, almost && styles.statusPillAlmost]}>
+                      <Text style={[styles.statusPillText, almost && styles.statusPillTextAlmost]}>{almost ? 'Almost!' : 'In Progress'}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {completed.length > 0 && (
+            <>
+              <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>COMPLETED</Text>
+              <View style={styles.tableCard}>
+                <View style={styles.tableHeaderRow}>
+                  <Text style={[styles.tableHeaderText, styles.colNameWide]}>Incentive</Text>
+                  <Text style={[styles.tableHeaderText, styles.colDate]}>Completed</Text>
+                  <Text style={[styles.tableHeaderText, styles.colDate]}>Earned</Text>
+                </View>
+                {completed.map((row, index) => (
+                  <TouchableOpacity
+                    key={row.id}
+                    style={[styles.tableRow, index < completed.length - 1 && styles.tableRowBorder]}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('IncentiveBonusEarned', {incentiveId: row.id})}>
+                    <Text style={[styles.tableCellStrong, styles.colNameWide]} numberOfLines={1}>
+                      {row.title}
+                    </Text>
+                    <Text style={[styles.tableCellMuted, styles.colDate]}>{formatDate(row.progress?.completedAt)}</Text>
+                    <Text style={[styles.tableCellReward, styles.colDate]}>{formatMoney(incentiveEarned(row))}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+
+          {expired.length > 0 && (
+            <TouchableOpacity style={styles.expiredLink} activeOpacity={0.7} onPress={() => navigation.navigate('IncentiveExpired')}>
+              <Text style={styles.expiredLinkText}>{`View ${expired.length} expired ${expired.length === 1 ? 'incentive' : 'incentives'}`}</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.summaryBanner}>
+            <Text style={styles.summaryText}>
+              Potential remaining: <Text style={styles.summaryStrong}>{formatMoney(potential)}</Text>
+            </Text>
+            <Text style={[styles.summaryText, styles.summaryTextRight]}>
+              Earned: <Text style={styles.summaryStrong}>{formatMoney(earned)}</Text>
+            </Text>
+          </View>
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -193,6 +226,8 @@ const styles = StyleSheet.create({
   tableHeaderText: {...typography.captionSemibold, fontSize: 11, color: colors.textSecondary},
   tableRow: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md},
   tableRowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
+  tableEmptyRow: {padding: spacing.lg},
+  tableEmptyText: {...typography.label, fontSize: 13, color: colors.textSecondary},
   tableCellStrong: {...typography.labelSemibold, fontSize: 13, color: colors.textPrimary},
   tableCellMuted: {...typography.label, fontSize: 12, color: colors.textSecondary},
   tableCellReward: {...typography.labelSemibold, fontSize: 13, color: colors.primary},
@@ -207,6 +242,8 @@ const styles = StyleSheet.create({
   statusPillAlmost: {backgroundColor: colors.primarySurface},
   statusPillText: {...typography.captionSemibold, fontSize: 11, color: colors.warning},
   statusPillTextAlmost: {color: colors.primary},
+  expiredLink: {alignItems: 'center', paddingVertical: spacing.sm},
+  expiredLinkText: {...typography.labelSemibold, fontSize: 13, color: colors.textSecondary},
   summaryBanner: {flexDirection: 'row', justifyContent: 'space-between', backgroundColor: colors.primarySurface, borderRadius: radius.lg, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, marginTop: spacing.md},
   summaryText: {...typography.label, fontSize: 13, color: colors.primaryDark, flex: 1},
   summaryTextRight: {textAlign: 'right'},

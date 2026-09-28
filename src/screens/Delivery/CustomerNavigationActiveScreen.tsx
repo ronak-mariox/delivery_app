@@ -18,18 +18,13 @@ export function CustomerNavigationActiveScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [orderId, getOrder]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => navigation.replace('NearCustomer', {orderId}), 4000);
-    return () => clearTimeout(timer);
-  }, [navigation, orderId]);
 
   const customerName = order?.address.contactName ?? 'Customer';
 
@@ -59,11 +54,8 @@ export function CustomerNavigationActiveScreen({route, navigation}: Props) {
           <Text style={styles.orderChipText}>#{order?.orderNumber ?? orderId} · {customerName}</Text>
         </View>
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.8}>
-            <Text style={styles.actionButtonText}>Mute</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.8}>
-            <Text style={styles.actionButtonText}>Overview</Text>
+          <TouchableOpacity style={styles.actionButton} activeOpacity={0.8} onPress={() => navigation.replace('NearCustomer', {orderId})}>
+            <Text style={styles.actionButtonText}>I'm near the customer</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.exitButton} activeOpacity={0.8} onPress={() => navigation.goBack()}>
             <Text style={styles.exitButtonText}>Exit Nav</Text>

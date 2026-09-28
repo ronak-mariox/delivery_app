@@ -1,5 +1,5 @@
 import React from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Button, Icon, Screen} from '../../components';
@@ -56,14 +56,11 @@ export function ApplicationSubmittedScreen({route, navigation}: Props) {
             <Text style={styles.referenceLabel}>APPLICATION REFERENCE</Text>
             <Text style={styles.referenceValue}>{referenceId}</Text>
           </View>
-          <TouchableOpacity style={styles.copyButton} activeOpacity={0.8}>
-            <Text style={styles.copyButtonText}>Copy</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.actions}>
           <Button label="Track Application Status" onPress={() => navigation.navigate('VerificationInProgress')} />
-          <Button label="Return to Home" variant="secondary" onPress={() => navigation.reset({index: 0, routes: [{name: 'Home'}]})} />
+          <Button label="Done" variant="secondary" onPress={() => navigation.reset({index: 0, routes: [{name: 'VerificationInProgress'}]})} />
         </View>
       </ScrollView>
     </Screen>
@@ -101,7 +98,5 @@ const styles = StyleSheet.create({
   },
   referenceLabel: {...typography.overline, fontSize: 11, color: colors.textSecondary, letterSpacing: 0.5},
   referenceValue: {...typography.title, fontSize: 18, color: colors.primary, marginTop: 2},
-  copyButton: {height: 36, paddingHorizontal: spacing.md, borderWidth: 1.5, borderColor: colors.primaryBorder, borderRadius: radius.sm, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center'},
-  copyButtonText: {...typography.captionSemibold, color: colors.primary},
   actions: {gap: spacing.sm},
 });

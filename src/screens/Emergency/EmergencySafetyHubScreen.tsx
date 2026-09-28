@@ -1,15 +1,48 @@
-import React from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useState} from 'react';
+import {ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Icon} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
+import {useOrders} from '../../context/OrdersContext';
+import {getApiErrorMessage} from '../../services/api';
+import {activateEmergency, EmergencyIncidentType} from '../../services/driverApi';
+import {INCIDENT_TYPE_OPTIONS} from './incidentLabels';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EmergencySafetyHub'>;
 
-const TIPS = ['Report unsafe locations', 'Leave immediately if you feel threatened', 'Your order will be reassigned'];
+const EMERGENCY_NUMBER = '112';
+const TIPS = ['Report unsafe locations', 'Leave immediately if you feel threatened', 'Your active order will be reassigned'];
 
 export function EmergencySafetyHubScreen({navigation}: Props) {
+  const {activeOrders} = useOrders();
+  const activeOrder = activeOrders[0];
+  const [selectedType, setSelectedType] = useState<EmergencyIncidentType>('other');
+  const [activating, setActivating] = useState(false);
+
+  const callEmergencyServices = () => {
+    Linking.openURL(`tel:${EMERGENCY_NUMBER}`).catch(() => Alert.alert('Unable to place call', `Please dial ${EMERGENCY_NUMBER} manually.`));
+  };
+
+  const activate = async () => {
+    setActivating(true);
+    try {
+      const incident = await activateEmergency({type: selectedType, orderId: activeOrder?.id});
+      navigation.navigate('EmergencyModeActive', {incidentId: incident.id});
+    } catch (err) {
+      Alert.alert('Could not activate emergency', getApiErrorMessage(err));
+    } finally {
+      setActivating(false);
+    }
+  };
+
+  const confirmActivate = () => {
+    Alert.alert('Activate emergency mode?', 'The safety team will be alerted immediately and your active order will be paused.', [
+      {text: 'Cancel', style: 'cancel'},
+      {text: 'Activate', style: 'destructive', onPress: activate},
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.hero}>
@@ -19,10 +52,32 @@ export function EmergencySafetyHubScreen({navigation}: Props) {
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity style={styles.emergencyButton} activeOpacity={0.85} onPress={() => navigation.navigate('EmergencyModeActive')}>
+        <TouchableOpacity style={styles.emergencyButton} activeOpacity={0.85} onPress={callEmergencyServices}>
           <Icon name="phone" size={24} color={colors.white} />
-          <Text style={styles.emergencyButtonText}>Call Emergency Services — 112</Text>
+          <Text style={styles.emergencyButtonText}>Call Emergency Services — {EMERGENCY_NUMBER}</Text>
         </TouchableOpacity>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>What is happening?</Text>
+          <View style={styles.chipsWrap}>
+            {INCIDENT_TYPE_OPTIONS.map(option => {
+              const active = option.value === selectedType;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.chip, active && styles.chipActive]}
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedType(option.value)}>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{option.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <TouchableOpacity style={[styles.sosButton, activating && styles.buttonDisabled]} activeOpacity={0.85} onPress={confirmActivate} disabled={activating}>
+            {activating ? <ActivityIndicator color={colors.white} /> : <Text style={styles.sosButtonText}>SOS — Alert Safety Team</Text>}
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity style={styles.safetyButton} activeOpacity={0.85} onPress={() => navigation.navigate('EmergencySupport')}>
           <Icon name="headphones" size={22} color={colors.white} />
           <Text style={styles.safetyButtonText}>Contact Verdant Safety Team</Text>
@@ -38,16 +93,18 @@ export function EmergencySafetyHubScreen({navigation}: Props) {
           ))}
         </View>
 
-        <View style={styles.warningBanner}>
-          <Icon name="alert-triangle" size={18} color={colors.warning} />
-          <Text style={styles.warningText}>
-            Active delivery <Text style={styles.warningBold}>#VR-84821</Text> will be safely handled
-          </Text>
-        </View>
+        {activeOrder ? (
+          <View style={styles.warningBanner}>
+            <Icon name="alert-triangle" size={18} color={colors.warning} />
+            <Text style={styles.warningText}>
+              Active delivery <Text style={styles.warningBold}>#{activeOrder.orderNumber}</Text> will be attached to any alert you raise
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85} onPress={() => navigation.navigate('EmergencyShareLocation')}>
+        <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85} onPress={() => navigation.navigate('EmergencyShareLocation', undefined)}>
           <Text style={styles.outlineButtonText}>Share My Location</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.dangerOutlineButton} activeOpacity={0.85} onPress={() => navigation.navigate('EmergencyIncidentReport')}>
@@ -71,6 +128,14 @@ const styles = StyleSheet.create({
   safetyButtonText: {...typography.bodySemibold, fontSize: 15, color: colors.white},
   card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm},
   cardTitle: {...typography.bodySemibold, fontSize: 14, color: colors.textPrimary},
+  chipsWrap: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
+  chip: {backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm},
+  chipActive: {backgroundColor: colors.dangerSurface, borderColor: colors.danger},
+  chipText: {...typography.label, fontSize: 13, color: colors.textPrimary},
+  chipTextActive: {color: colors.danger, fontWeight: '600'},
+  sosButton: {backgroundColor: colors.danger, borderRadius: radius.md, height: 48, alignItems: 'center', justifyContent: 'center', marginTop: spacing.xs},
+  sosButtonText: {...typography.bodyBold, fontSize: 15, color: colors.white},
+  buttonDisabled: {opacity: 0.6},
   tipRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
   tipText: {...typography.body, fontSize: 14, color: colors.textSecondary},
   warningBanner: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.warningSurface, borderWidth: 1, borderColor: colors.warning, borderRadius: radius.md, padding: spacing.md},

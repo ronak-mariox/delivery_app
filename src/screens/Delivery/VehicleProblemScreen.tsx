@@ -20,7 +20,7 @@ export function VehicleProblemScreen({route, navigation}: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    getOrder(orderId).then((o) => { if (!cancelled) setOrder(o); }).catch(() => {});
+    getOrder(orderId).then((o) => { if (!cancelled) {setOrder(o);} }).catch(() => {});
     return () => { cancelled = true; };
   }, [orderId, getOrder]);
 
@@ -95,7 +95,7 @@ export function VehicleProblemScreen({route, navigation}: Props) {
 
         <View style={styles.emergencyBanner}>
           <Text style={styles.emergencyText}>If you were in an accident, tap Emergency Assist.</Text>
-          <Button label="Emergency Assist" style={styles.emergencyButton} onPress={() => navigation.navigate('EmergencyModeActive')} />
+          <Button label="Emergency Assist" style={styles.emergencyButton} onPress={() => navigation.navigate('EmergencySafetyHub')} />
         </View>
       </ScrollView>
     </Screen>

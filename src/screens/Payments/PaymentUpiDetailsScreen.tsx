@@ -1,78 +1,61 @@
-import React, {useState} from 'react';
-import {ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
+import React from 'react';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Icon} from '../../components';
-import {colors, radius, spacing, typography} from '../../theme';
+import {EmptyState, Icon, IconBackButton, InfoBanner} from '../../components';
+import {colors, radius, shadows, spacing, typography} from '../../theme';
+import {useDriverAuth} from '../../context/DriverAuthContext';
+import {ContactSupport} from '../Profile/ContactSupport';
+import {maskAccountNumber} from '../Profile/driverDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentUpiDetails'>;
 
-const QUICK_SELECT = ['HDFC', 'GPay', 'PhonePe', 'Paytm'];
-
 export function PaymentUpiDetailsScreen({navigation}: Props) {
-  const [newUpi, setNewUpi] = useState('');
+  const {driver} = useDriverAuth();
+  const bank = driver?.bankDetails;
+  const upiId = bank?.upiId;
+
+  const rows = upiId
+    ? [
+        {label: 'UPI ID', value: upiId},
+        {label: 'Linked to', value: bank?.accountHolderName || '—'},
+        {label: 'Bank account', value: maskAccountNumber(bank?.accountNumber)},
+      ]
+    : [];
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Icon name="chevron-left" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <IconBackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>UPI Details</Text>
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <View style={styles.upiCard}>
-          <View style={styles.upiTopRow}>
-            <Text style={styles.upiId}>ravi.kumar@hdfc</Text>
-            <View style={styles.verifiedPill}>
-              <Icon name="check-circle" size={14} color={colors.primary} />
-              <Text style={styles.verifiedPillText}>VERIFIED</Text>
+        {upiId ? (
+          <>
+            <View style={styles.hero}>
+              <Icon name="smartphone" size={32} color={colors.white} />
+              <Text style={styles.heroLabel}>UPI ID</Text>
+              <Text style={styles.heroValue}>{upiId}</Text>
             </View>
-          </View>
-          <View style={styles.upiRow}>
-            <Text style={styles.upiLabel}>Linked Bank</Text>
-            <Text style={styles.upiValue}>HDFC Bank ****1234</Text>
-          </View>
-          <View style={styles.upiRow}>
-            <Text style={styles.upiLabel}>App</Text>
-            <Text style={styles.upiValue}>HDFC Bank UPI</Text>
-          </View>
-        </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Add another UPI ID</Text>
-          <View style={styles.addRow}>
-            <TextInput
-              style={styles.input}
-              placeholder="yourname@bank"
-              placeholderTextColor="rgba(31,41,55,0.5)"
-              value={newUpi}
-              onChangeText={setNewUpi}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity style={styles.verifyButton} activeOpacity={0.85} onPress={() => navigation.navigate('PaymentUpiAdded')}>
-              <Text style={styles.verifyButtonText}>Verify</Text>
-            </TouchableOpacity>
-          </View>
+            <View style={styles.card}>
+              {rows.map((row, index) => (
+                <View key={row.label} style={[styles.row, index < rows.length - 1 && styles.rowBorder]}>
+                  <Text style={styles.rowLabel}>{row.label}</Text>
+                  <Text style={styles.rowValue}>{row.value}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          <>
+            <EmptyState icon="smartphone" title="No UPI ID linked" description="A UPI ID was not provided during registration." />
+            {bank ? <InfoBanner tone="neutral" icon="info" description={`Payouts are settled to your bank account ending ${maskAccountNumber(bank.accountNumber).slice(-4)}.`} /> : null}
+          </>
+        )}
 
-          <Text style={styles.quickSelectLabel}>Quick select</Text>
-          <View style={styles.quickSelectRow}>
-            {QUICK_SELECT.map(app => (
-              <TouchableOpacity
-                key={app}
-                style={styles.quickChip}
-                activeOpacity={0.8}
-                onPress={() => navigation.navigate('PaymentUpiVerificationFailed')}>
-                <Text style={styles.quickChipText}>{app}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.hintBanner}>
-          <Text style={styles.hintText}>Your primary UPI ID is used for payouts. You can add multiple UPI IDs.</Text>
-        </View>
+        <ContactSupport description="To add or change your UPI ID, contact support." />
       </ScrollView>
     </View>
   );
@@ -92,37 +75,14 @@ const styles = StyleSheet.create({
     paddingTop: 52,
     paddingBottom: spacing.md,
   },
-  headerTitle: {...typography.title, fontSize: 18, color: colors.textPrimary},
+  headerTitle: {...typography.title, fontSize: 17, color: colors.textPrimary, flex: 1},
   body: {padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl},
-  upiCard: {backgroundColor: colors.primarySurface, borderWidth: 1.5, borderColor: colors.primary, borderRadius: radius.xl, padding: spacing.lg, gap: spacing.md},
-  upiTopRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-  upiId: {...typography.bodyBold, fontSize: 15, color: colors.textPrimary},
-  verifiedPill: {flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.white, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4},
-  verifiedPillText: {...typography.captionSemibold, fontSize: 11, color: colors.primary},
-  upiRow: {flexDirection: 'row', justifyContent: 'space-between'},
-  upiLabel: {...typography.label, fontSize: 13, color: colors.textSecondary},
-  upiValue: {...typography.labelSemibold, fontSize: 13, color: colors.textPrimary},
-  card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.xl, padding: spacing.lg},
-  cardTitle: {...typography.bodySemibold, fontSize: 14, color: colors.textPrimary, marginBottom: spacing.md},
-  addRow: {flexDirection: 'row', gap: spacing.sm},
-  input: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    ...typography.body,
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
-  verifyButton: {backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: spacing.lg, alignItems: 'center', justifyContent: 'center'},
-  verifyButtonText: {...typography.bodySemibold, fontSize: 14, color: colors.white},
-  quickSelectLabel: {...typography.caption, fontSize: 12, color: colors.textSecondary, marginTop: spacing.md},
-  quickSelectRow: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, flexWrap: 'wrap'},
-  quickChip: {backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm},
-  quickChipText: {...typography.bodyMedium, fontSize: 12, color: colors.textPrimary},
-  hintBanner: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md},
-  hintText: {...typography.label, fontSize: 13, color: colors.textSecondary, lineHeight: 20.8},
+  hero: {backgroundColor: colors.primary, borderRadius: radius.xxl, alignItems: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.lg, gap: spacing.xs},
+  heroLabel: {...typography.overline, fontSize: 10, color: 'rgba(255,255,255,0.8)', letterSpacing: 1},
+  heroValue: {...typography.title, color: colors.white},
+  card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, overflow: 'hidden', ...shadows.sm},
+  row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
+  rowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
+  rowLabel: {...typography.label, fontSize: 13, color: colors.textSecondary},
+  rowValue: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary, flexShrink: 1, textAlign: 'right'},
 });

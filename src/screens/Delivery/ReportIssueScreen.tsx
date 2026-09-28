@@ -8,6 +8,13 @@ import {DeliveryIssueType, DeliveryOrder, useOrders} from '../../context/OrdersC
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReportIssue'>;
 
+const DEDICATED_SCREENS: Partial<Record<DeliveryIssueType, 'WrongAddress' | 'VehicleProblem' | 'RoadBlockage' | 'SafetyConcern'>> = {
+  wrong_address: 'WrongAddress',
+  vehicle_problem: 'VehicleProblem',
+  road_blockage: 'RoadBlockage',
+  safety_concern: 'SafetyConcern',
+};
+
 const CATEGORIES: {type: DeliveryIssueType; label: string; subtitle: string; icon: IconName}[] = [
   {type: 'wrong_address', label: 'Wrong address', subtitle: 'Delivery location does not match the order', icon: 'map-pin'},
   {type: 'package_damage', label: 'Package damaged', subtitle: 'Item packaging is torn or broken', icon: 'package'},
@@ -25,7 +32,7 @@ export function ReportIssueScreen({route, navigation}: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    getOrder(orderId).then((o) => { if (!cancelled) setOrder(o); }).catch(() => {});
+    getOrder(orderId).then((o) => { if (!cancelled) {setOrder(o);} }).catch(() => {});
     return () => { cancelled = true; };
   }, [orderId, getOrder]);
 
@@ -66,7 +73,17 @@ export function ReportIssueScreen({route, navigation}: Props) {
         <Button
           label="Continue"
           disabled={!selected}
-          onPress={() => selected && navigation.navigate('UploadEvidence', {orderId, issueType: selected})}
+          onPress={() => {
+            if (!selected) {
+              return;
+            }
+            const dedicated = DEDICATED_SCREENS[selected];
+            if (dedicated) {
+              navigation.navigate(dedicated, {orderId});
+            } else {
+              navigation.navigate('UploadEvidence', {orderId, issueType: selected});
+            }
+          }}
         />
         <Button label="Cancel" variant="secondary" onPress={() => navigation.goBack()} />
       </View>

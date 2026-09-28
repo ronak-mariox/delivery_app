@@ -30,7 +30,7 @@ export function AssignmentFailedScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrderNumber(o.orderNumber);
+        if (!cancelled) {setOrderNumber(o.orderNumber);}
       })
       .catch(() => {});
     return () => {

@@ -2,7 +2,7 @@ import React, {useEffect} from 'react';
 import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {EmptyState, Icon, IconBackButton, Loader} from '../../components';
+import {EmptyState, IconBackButton, Loader} from '../../components';
 import {colors, radius, shadows, spacing, typography} from '../../theme';
 import {useOrders} from '../../context/OrdersContext';
 

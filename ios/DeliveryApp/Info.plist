@@ -32,8 +32,12 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Verdant Rider uses the camera to photograph your documents and delivery issue evidence.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Verdant Rider needs photo library access to upload your documents and delivery issue evidence.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>Verdant Rider uses your location to sort nearby delivery requests by distance.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

@@ -15,24 +15,23 @@ export function LocationPermissionScreen({navigation}: Props) {
           <View style={styles.iconRing} />
           <Icon name="map-pin" size={64} color={colors.primary} filled />
         </View>
-        <Text style={styles.title}>Allow Location Access</Text>
+        <Text style={styles.title}>Navigation uses your maps app</Text>
         <Text style={styles.subtitle}>
-          Verdant Rider needs your precise location to show you nearby delivery requests and navigate to pickup points.
+          Verdant Rider hands directions to Google Maps, Waze or your device's maps app. Keep location turned on for those apps so turn-by-turn navigation works.
         </Text>
 
         <View style={styles.reasons}>
-          <ReasonRow icon="map-pin" title="Real-time location" subtitle="For receiving nearby delivery requests" />
-          <ReasonRow icon="clock" title="Background location" subtitle="While the app is running in background" />
+          <ReasonRow icon="map-pin" title="Store & customer addresses" subtitle="Opened in your preferred maps app" />
+          <ReasonRow icon="clock" title="No background tracking" subtitle="This app does not track your location on its own" />
         </View>
 
         <Text style={styles.footnote}>
-          Your location data is never shared with third parties and is used only to connect you with deliveries.
+          You can set a pickup area in your profile so nearby orders are sorted by distance.
         </Text>
       </View>
 
       <View style={styles.actions}>
-        <Button label="Allow Location Access" onPress={() => navigation.navigate('EnableNotifications')} />
-        <Button label="Not Now" variant="ghost" onPress={() => navigation.navigate('EnableNotifications')} />
+        <Button label="Continue" onPress={() => navigation.navigate('EnableNotifications')} />
       </View>
     </Screen>
   );

@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Alert, Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import Svg, {Circle, Line} from 'react-native-svg';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
@@ -10,23 +10,58 @@ import {DeliveryOrder, useOrders} from '../../context/OrdersContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NavigateToStore'>;
 
-const APPS = [
+type MapApp = 'google' | 'waze' | 'apple';
+
+const APPS: {id: MapApp; label: string; source: number}[] = [
   {id: 'google', label: 'Google Maps', source: require('../../assets/images/google-maps-icon.png')},
   {id: 'waze', label: 'Waze', source: require('../../assets/images/waze-icon.png')},
-  {id: 'ola', label: 'Ola Maps', source: require('../../assets/images/ola-maps-icon.png')},
+  {id: 'apple', label: Platform.OS === 'ios' ? 'Apple Maps' : 'Default Maps', source: require('../../assets/images/ola-maps-icon.png')},
 ];
+
+function mapsUrlFor(app: MapApp, lat?: number, lng?: number, address?: string): string | null {
+  const hasCoords = lat != null && lng != null;
+  const query = hasCoords ? `${lat},${lng}` : address ? encodeURIComponent(address) : null;
+  if (!query) {
+    return null;
+  }
+  switch (app) {
+    case 'waze':
+      return hasCoords ? `https://waze.com/ul?ll=${query}&navigate=yes` : `https://waze.com/ul?q=${query}&navigate=yes`;
+    case 'apple':
+      if (Platform.OS === 'ios') {
+        return hasCoords ? `http://maps.apple.com/?daddr=${query}` : `http://maps.apple.com/?q=${query}`;
+      }
+      return hasCoords ? `geo:${query}?q=${query}` : `geo:0,0?q=${query}`;
+    default:
+      return `https://www.google.com/maps/dir/?api=1&destination=${query}`;
+  }
+}
 
 export function NavigateToStoreScreen({route, navigation}: Props) {
   const {orderId} = route.params;
   const {getOrder} = useOrders();
   const [order, setOrder] = useState<DeliveryOrder | null>(null);
-  const [selectedApp, setSelectedApp] = useState(APPS[0].id);
+  const [selectedApp, setSelectedApp] = useState<MapApp>(APPS[0].id);
+
+  const openInMaps = async () => {
+    const url = mapsUrlFor(selectedApp, order?.pickup.latitude, order?.pickup.longitude, order?.pickup.address);
+    if (!url) {
+      Alert.alert('No location', 'This store has no address on file yet.');
+      return;
+    }
+    try {
+      await Linking.openURL(url);
+      navigation.navigate('NavigationActive', {orderId});
+    } catch {
+      Alert.alert('Could not open maps', 'Install the selected maps app or pick another one.');
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
@@ -74,7 +109,7 @@ export function NavigateToStoreScreen({route, navigation}: Props) {
           label="Start Navigation"
           icon="navigation"
           style={styles.startButton}
-          onPress={() => navigation.navigate('NavigationActive', {orderId})}
+          onPress={openInMaps}
         />
       </View>
     </Screen>

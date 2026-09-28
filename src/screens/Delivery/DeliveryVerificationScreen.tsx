@@ -1,5 +1,5 @@
 import React from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Button, Icon, IconBackButton, IconName, Screen} from '../../components';
@@ -8,9 +8,7 @@ import {colors, radius, spacing, typography} from '../../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryVerification'>;
 
 const METHODS: {icon: IconName; title: string; subtitle: string; available: boolean}[] = [
-  {icon: 'smartphone', title: 'Customer OTP', subtitle: "Ask customer for their 4-digit code", available: true},
-  {icon: 'camera', title: 'Photo Proof', subtitle: 'Coming soon', available: false},
-  {icon: 'edit', title: 'Digital Signature', subtitle: 'Coming soon', available: false},
+  {icon: 'smartphone', title: 'Customer OTP', subtitle: 'Ask the customer for their 6-digit code', available: true},
 ];
 
 export function DeliveryVerificationScreen({route, navigation}: Props) {
@@ -26,7 +24,7 @@ export function DeliveryVerificationScreen({route, navigation}: Props) {
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <View style={styles.infoBanner}>
           <Icon name="alert-circle" size={18} color={colors.primary} />
-          <Text style={styles.infoText}>To complete delivery, verify the customer's identity using one of these methods.</Text>
+          <Text style={styles.infoText}>To complete delivery, verify the customer's delivery code.</Text>
         </View>
 
         {METHODS.map(method => {
@@ -56,7 +54,7 @@ export function DeliveryVerificationScreen({route, navigation}: Props) {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button label="Continue with OTP →" onPress={() => navigation.navigate('OtpEntry', {orderId})} />
+        <Button label="Hand Over & Verify OTP →" onPress={() => navigation.navigate('HandOverOrder', {orderId})} />
       </View>
     </Screen>
   );

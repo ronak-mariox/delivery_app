@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Alert, Linking, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import Svg, {Circle, Line} from 'react-native-svg';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
@@ -9,7 +9,27 @@ import {DeliveryOrder, useOrders} from '../../context/OrdersContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CustomerStartNavigation'>;
 
-const APPS = ['Google Maps', 'Waze', 'Ola Maps'];
+type MapApp = 'Google Maps' | 'Waze' | 'Device Maps';
+const APPS: MapApp[] = ['Google Maps', 'Waze', 'Device Maps'];
+
+function mapsUrlFor(app: MapApp, lat?: number, lng?: number, address?: string): string | null {
+  const hasCoords = lat != null && lng != null;
+  const query = hasCoords ? `${lat},${lng}` : address ? encodeURIComponent(address) : null;
+  if (!query) {
+    return null;
+  }
+  switch (app) {
+    case 'Waze':
+      return hasCoords ? `https://waze.com/ul?ll=${query}&navigate=yes` : `https://waze.com/ul?q=${query}&navigate=yes`;
+    case 'Device Maps':
+      if (Platform.OS === 'ios') {
+        return hasCoords ? `http://maps.apple.com/?daddr=${query}` : `http://maps.apple.com/?q=${query}`;
+      }
+      return hasCoords ? `geo:${query}?q=${query}` : `geo:0,0?q=${query}`;
+    default:
+      return `https://www.google.com/maps/dir/?api=1&destination=${query}`;
+  }
+}
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -24,13 +44,29 @@ export function CustomerStartNavigationScreen({route, navigation}: Props) {
   const {orderId} = route.params;
   const {getOrder} = useOrders();
   const [order, setOrder] = useState<DeliveryOrder | null>(null);
-  const [selectedApp, setSelectedApp] = useState(APPS[0]);
+  const [selectedApp, setSelectedApp] = useState<MapApp>(APPS[0]);
+
+  const openInMaps = async () => {
+    const addr = order?.address;
+    const fullAddress = addr ? [addr.line1, addr.line2, addr.landmark, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ') : undefined;
+    const url = mapsUrlFor(selectedApp, addr?.latitude, addr?.longitude, fullAddress);
+    if (!url) {
+      Alert.alert('No location', 'This order has no delivery address on file.');
+      return;
+    }
+    try {
+      await Linking.openURL(url);
+      navigation.navigate('CustomerNavigationActive', {orderId});
+    } catch {
+      Alert.alert('Could not open maps', 'Install the selected maps app or pick another one.');
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
@@ -83,7 +119,7 @@ export function CustomerStartNavigationScreen({route, navigation}: Props) {
         <Button
           label="Start Navigation"
           style={styles.startButton}
-          onPress={() => navigation.navigate('CustomerNavigationActive', {orderId})}
+          onPress={openInMaps}
         />
         <TouchableOpacity
           style={styles.markArrivedLink}

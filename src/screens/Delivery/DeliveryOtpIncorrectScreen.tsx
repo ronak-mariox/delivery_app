@@ -10,7 +10,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DeliveryOtpIncorrect'>;
 
 function initialsFor(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
+  if (parts.length === 0) {return '?';}
   return parts
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase())
@@ -18,7 +18,7 @@ function initialsFor(name: string): string {
 }
 
 export function DeliveryOtpIncorrectScreen({route, navigation}: Props) {
-  const {orderId} = route.params;
+  const {orderId, attemptsLeft, message} = route.params;
   const {getOrder} = useOrders();
   const [order, setOrder] = useState<DeliveryOrder | null>(null);
 
@@ -26,7 +26,7 @@ export function DeliveryOtpIncorrectScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
@@ -46,8 +46,14 @@ export function DeliveryOtpIncorrectScreen({route, navigation}: Props) {
       <View style={styles.body}>
         <View style={styles.errorBanner}>
           <Icon name="alert-circle" size={18} color={colors.danger} />
-          <Text style={styles.errorText}>Incorrect OTP. Please ask the customer to check their SMS.</Text>
+          <Text style={styles.errorText}>{message || 'Incorrect OTP. Please ask the customer to check their SMS.'}</Text>
         </View>
+
+        {typeof attemptsLeft === 'number' && (
+          <Text style={styles.attemptsText}>
+            {attemptsLeft} {attemptsLeft === 1 ? 'attempt' : 'attempts'} remaining
+          </Text>
+        )}
 
         <View style={styles.customerPill}>
           <View style={styles.customerAvatar}>
@@ -57,15 +63,15 @@ export function DeliveryOtpIncorrectScreen({route, navigation}: Props) {
         </View>
 
         <View style={styles.otpRow}>
-          {[0, 1, 2, 3].map(i => (
+          {[0, 1, 2, 3, 4, 5].map(i => (
             <View key={i} style={styles.otpBox}>
               <View style={styles.otpDot} />
             </View>
           ))}
         </View>
 
-        <TouchableOpacity hitSlop={{top: 8, bottom: 8, left: 8, right: 8}} onPress={() => navigation.navigate('StateActionFailed')}>
-          <Text style={styles.helpLink}>Customer doesn't have OTP?</Text>
+        <TouchableOpacity hitSlop={{top: 8, bottom: 8, left: 8, right: 8}} onPress={() => navigation.navigate('CustomerUnavailable', {orderId})}>
+          <Text style={styles.helpLink}>Customer doesn't have the code?</Text>
         </TouchableOpacity>
       </View>
 
@@ -112,8 +118,8 @@ const styles = StyleSheet.create({
   customerAvatar: {width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center'},
   customerAvatarText: {...typography.captionSemibold, color: colors.white},
   customerName: {...typography.bodySemibold, color: colors.textPrimary},
-  otpRow: {flexDirection: 'row', gap: spacing.md},
-  otpBox: {width: 64, height: 72, borderRadius: radius.lg, borderWidth: 2, borderColor: colors.danger, backgroundColor: colors.dangerSurface, alignItems: 'center', justifyContent: 'center'},
+  otpRow: {flexDirection: 'row', gap: spacing.sm},
+  otpBox: {width: 46, height: 60, borderRadius: radius.lg, borderWidth: 2, borderColor: colors.danger, backgroundColor: colors.dangerSurface, alignItems: 'center', justifyContent: 'center'},
   otpDot: {width: 12, height: 12, borderRadius: 6, backgroundColor: colors.danger},
   attemptsText: {...typography.labelSemibold, color: colors.danger},
   helpLink: {...typography.label, color: colors.textSecondary},

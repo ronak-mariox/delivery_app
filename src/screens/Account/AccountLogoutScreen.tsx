@@ -1,19 +1,38 @@
 import React, {useState} from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Avatar, Icon} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
+import {driverName, useDriverAuth} from '../../context/DriverAuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AccountLogout'>;
 
+function initialsOf(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0].toUpperCase())
+    .join('');
+}
+
 export function AccountLogoutScreen({navigation}: Props) {
-  const [option, setOption] = useState<'device' | 'all'>('device');
+  const {driver, logout} = useDriverAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const name = driverName(driver);
+
+  const confirmLogout = async () => {
+    setLoggingOut(true);
+    await logout();
+    navigation.reset({index: 0, routes: [{name: 'Welcome'}]});
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+        <TouchableOpacity onPress={() => navigation.goBack()} disabled={loggingOut} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
           <Icon name="chevron-left" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Logout</Text>
@@ -21,47 +40,24 @@ export function AccountLogoutScreen({navigation}: Props) {
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <View style={styles.profileCard}>
-          <Avatar initials="RK" size={48} backgroundColor={colors.primary} textColor={colors.white} />
+          <Avatar initials={initialsOf(name) || 'D'} size={48} backgroundColor={colors.primary} textColor={colors.white} />
           <View>
-            <Text style={styles.profileName}>Ravi Kumar</Text>
-            <Text style={styles.profilePhone}>+91 98765 43210</Text>
+            <Text style={styles.profileName}>{name}</Text>
+            {driver?.phone ? <Text style={styles.profilePhone}>{driver.phone}</Text> : null}
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Logout options</Text>
-
-        <TouchableOpacity
-          style={[styles.optionCard, option === 'device' && styles.optionCardActive]}
-          activeOpacity={0.8}
-          onPress={() => setOption('device')}>
-          <View style={styles.optionTopRow}>
-            <Text style={styles.optionTitle}>Logout from this device only</Text>
-            {option === 'device' && <Icon name="check" size={18} color={colors.primary} />}
-          </View>
-          <Text style={styles.optionSubtitle}>Remains logged in on other devices</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.optionCard, option === 'all' && styles.optionCardActive]}
-          activeOpacity={0.8}
-          onPress={() => setOption('all')}>
-          <View style={styles.optionTopRow}>
-            <Text style={styles.optionTitle}>Logout from all devices</Text>
-            {option === 'all' && <Icon name="check" size={18} color={colors.primary} />}
-          </View>
-          <Text style={styles.optionSubtitle}>Logs out from every active session</Text>
-        </TouchableOpacity>
-
         <View style={styles.noteBanner}>
-          <Text style={styles.noteText}>You will need to log in again on any device you logout from.</Text>
+          <Icon name="info" size={16} color={colors.textSecondary} />
+          <Text style={styles.noteText}>You will be signed out on this device and will need to log in again with your mobile number and OTP.</Text>
         </View>
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85} onPress={() => navigation.navigate('AccountLoggingOut')}>
-          <Text style={styles.primaryButtonText}>Confirm Logout</Text>
+        <TouchableOpacity style={[styles.primaryButton, loggingOut && styles.primaryButtonDisabled]} activeOpacity={0.85} disabled={loggingOut} onPress={confirmLogout}>
+          {loggingOut ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryButtonText}>Confirm Logout</Text>}
         </TouchableOpacity>
-        <TouchableOpacity style={styles.cancelButton} activeOpacity={0.85} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.cancelButton} activeOpacity={0.85} disabled={loggingOut} onPress={() => navigation.goBack()}>
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -84,36 +80,17 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   headerTitle: {...typography.title, fontSize: 18, color: colors.textPrimary},
-  body: {padding: spacing.xl, alignItems: 'center', gap: spacing.md, paddingBottom: 120},
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xxl,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    width: '100%',
-    marginBottom: spacing.md,
-  },
-  profileName: {...typography.bodyBold, fontSize: 16, color: colors.textPrimary},
+  body: {padding: spacing.lg, gap: spacing.lg, paddingBottom: 160},
+  profileCard: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg},
+  profileName: {...typography.bodySemibold, fontSize: 16, color: colors.textPrimary},
   profilePhone: {...typography.label, fontSize: 13, color: colors.textSecondary, marginTop: 2},
-  sectionTitle: {...typography.bodySemibold, fontSize: 15, color: colors.textPrimary, alignSelf: 'flex-start'},
-  optionCard: {width: '100%', borderWidth: 2, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg},
-  optionCardActive: {backgroundColor: colors.primarySurface, borderColor: colors.primary},
-  optionTopRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-  optionTitle: {...typography.bodySemibold, fontSize: 14, color: colors.textPrimary},
-  optionSubtitle: {...typography.caption, fontSize: 12, color: colors.textSecondary, marginTop: spacing.xs},
-  noteBanner: {width: '100%', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.sm},
-  noteText: {...typography.label, fontSize: 13, color: colors.textSecondary, textAlign: 'center'},
+  noteBanner: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md},
+  noteText: {...typography.label, fontSize: 13, color: colors.textSecondary, flex: 1, lineHeight: 20},
   bottomBar: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    flexDirection: 'row',
     gap: spacing.sm,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
@@ -122,8 +99,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingBottom: spacing.xl,
   },
-  primaryButton: {flex: 1.6, backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: 'center'},
+  primaryButton: {backgroundColor: colors.danger, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: 'center', minHeight: 48, justifyContent: 'center'},
+  primaryButtonDisabled: {opacity: 0.7},
   primaryButtonText: {...typography.bodySemibold, fontSize: 15, color: colors.white},
-  cancelButton: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-  cancelButtonText: {...typography.bodyMedium, fontSize: 15, color: colors.textSecondary},
+  cancelButton: {borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: 'center'},
+  cancelButtonText: {...typography.bodySemibold, fontSize: 15, color: colors.textPrimary},
 });

@@ -1,25 +1,24 @@
-import React from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Icon, IconBackButton} from '../../components';
+import {EmptyState, ErrorState, Icon, IconBackButton, Loader} from '../../components';
+import {getApiErrorMessage} from '../../services/api';
+import {getRating, RatingSummary} from '../../services/driverApi';
 import {colors, radius, spacing, typography} from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CustomerRating'>;
 
-const DISTRIBUTION = [
-  {stars: 5, pct: 78},
-  {stars: 4, pct: 14},
-  {stars: 3, pct: 5},
-  {stars: 2, pct: 2},
-  {stars: 1, pct: 1},
-];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const STAR_LEVELS = [5, 4, 3, 2, 1];
 
-const REVIEWS = [
-  {stars: 5, text: 'Fast and professional', date: 'Sep 5'},
-  {stars: 5, text: 'Quick delivery', date: 'Sep 4'},
-  {stars: 4, text: 'Package was intact', date: 'Sep 3'},
-];
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return '';
+  }
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+}
 
 function StarRow({count, size = 12}: {count: number; size?: number}) {
   return (
@@ -32,53 +31,96 @@ function StarRow({count, size = 12}: {count: number; size?: number}) {
 }
 
 export function CustomerRatingScreen({navigation}: Props) {
+  const [data, setData] = useState<RatingSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await getRating());
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const renderBody = () => {
+    if (loading) {
+      return <Loader fullscreen />;
+    }
+    if (error || !data) {
+      return <ErrorState title="Couldn't load ratings" description={error ?? undefined} onRetry={load} />;
+    }
+    if (data.count === 0 && data.reviews.length === 0) {
+      return <EmptyState icon="star" title="No ratings yet" description="Customer ratings will appear here after your first rated delivery." />;
+    }
+
+    const distribution = STAR_LEVELS.map(stars => {
+      const n = data.reviews.filter(r => Math.round(r.stars) === stars).length;
+      return {stars, pct: data.reviews.length === 0 ? 0 : Math.round((n / data.reviews.length) * 100)};
+    });
+
+    return (
+      <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        <View style={styles.heroCard}>
+          <Icon name="star" size={40} color={colors.primary} filled />
+          <Text style={styles.heroValue}>{data.average === null ? '—' : data.average.toFixed(1)}</Text>
+          <Text style={styles.heroLabel}>out of 5.0</Text>
+          <Text style={styles.heroSub}>
+            Based on {data.count} {data.count === 1 ? 'rating' : 'ratings'}
+          </Text>
+        </View>
+
+        {data.reviews.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Rating Distribution</Text>
+            {distribution.map(d => (
+              <View key={d.stars} style={styles.distRow}>
+                <Text style={styles.distNumber}>{d.stars}</Text>
+                <Icon name="star" size={12} color={colors.primary} filled />
+                <View style={styles.distTrack}>
+                  <View style={[styles.distFill, {width: `${d.pct}%`}]} />
+                </View>
+                <Text style={styles.distPct}>{d.pct}%</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Recent Reviews</Text>
+          {data.reviews.length === 0 ? (
+            <Text style={styles.noReviews}>No written reviews yet.</Text>
+          ) : (
+            data.reviews.map((r, index) => (
+              <View key={`${r.createdAt}-${index}`} style={[styles.reviewRow, index < data.reviews.length - 1 && styles.reviewRowBorder]}>
+                <View style={styles.reviewHeader}>
+                  <StarRow count={Math.round(r.stars)} />
+                  <Text style={styles.reviewDate}>{formatDate(r.createdAt)}</Text>
+                </View>
+                <Text style={[styles.reviewText, !r.reviewText && styles.reviewTextMuted]}>{r.reviewText || 'No comment left'}</Text>
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <IconBackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Customer Rating</Text>
       </View>
-
-      <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroCard}>
-          <Icon name="star" size={40} color={colors.primary} filled />
-          <Text style={styles.heroValue}>4.8</Text>
-          <Text style={styles.heroLabel}>out of 5.0</Text>
-          <Text style={styles.heroSub}>Based on 234 ratings</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Rating Distribution</Text>
-          {DISTRIBUTION.map(d => (
-            <View key={d.stars} style={styles.distRow}>
-              <Text style={styles.distNumber}>{d.stars}</Text>
-              <Icon name="star" size={12} color={colors.primary} filled />
-              <View style={styles.distTrack}>
-                <View style={[styles.distFill, {width: `${d.pct}%`}]} />
-              </View>
-              <Text style={styles.distPct}>{d.pct}%</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Recent Reviews</Text>
-          {REVIEWS.map((r, index) => (
-            <View key={r.text} style={[styles.reviewRow, index < REVIEWS.length - 1 && styles.reviewRowBorder]}>
-              <View style={styles.reviewHeader}>
-                <StarRow count={r.stars} />
-                <Text style={styles.reviewDate}>{r.date}</Text>
-              </View>
-              <Text style={styles.reviewText}>{r.text}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.keepBanner}>
-          <Text style={styles.keepTitle}>Keep It Up</Text>
-          <Text style={styles.keepText}>Ratings below 4.5 trigger review. You are well above threshold.</Text>
-        </View>
-      </ScrollView>
+      {renderBody()}
     </View>
   );
 }
@@ -110,13 +152,12 @@ const styles = StyleSheet.create({
   distTrack: {flex: 1, height: 8, borderRadius: 4, backgroundColor: '#F3F4F6', overflow: 'hidden'},
   distFill: {height: 8, borderRadius: 4, backgroundColor: colors.primary},
   distPct: {...typography.caption, color: colors.textMuted, width: 30, textAlign: 'right'},
+  noReviews: {...typography.label, fontSize: 13, color: colors.textMuted, marginTop: spacing.sm},
   reviewRow: {paddingVertical: spacing.sm},
   reviewRowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
   reviewHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
   reviewDate: {...typography.caption, fontSize: 11, color: colors.textMuted},
   reviewText: {...typography.label, fontSize: 13, color: colors.textPrimary, marginTop: spacing.xs},
-  keepBanner: {backgroundColor: colors.warningSurface, borderWidth: 1, borderColor: '#FDE8C8', borderRadius: radius.lg, padding: spacing.lg},
-  keepTitle: {...typography.bodyBold, fontSize: 13, color: colors.warningText},
-  keepText: {...typography.label, fontSize: 13, color: '#78350F', marginTop: 3},
+  reviewTextMuted: {color: colors.textMuted},
   starRow: {flexDirection: 'row', gap: 2},
 });

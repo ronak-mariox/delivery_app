@@ -22,7 +22,7 @@ export function PickupConfirmationScreen({route, navigation}: Props) {
   const startedRef = useRef(false);
 
   useEffect(() => {
-    if (startedRef.current) return;
+    if (startedRef.current) {return;}
     startedRef.current = true;
 
     confirmPickup(orderId)

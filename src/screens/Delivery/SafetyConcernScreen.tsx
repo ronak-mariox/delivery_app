@@ -64,7 +64,7 @@ export function SafetyConcernScreen({route, navigation}: Props) {
           label="Emergency Services — 112"
           icon="phone"
           style={styles.emergencyButton}
-          onPress={() => navigation.navigate('EmergencyModeActive')}
+          onPress={() => navigation.navigate('EmergencySafetyHub')}
         />
         <Button
           label={submitting ? 'Reporting…' : 'Report — Priority'}

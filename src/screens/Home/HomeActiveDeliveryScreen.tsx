@@ -26,13 +26,13 @@ export function HomeActiveDeliveryScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     api
       .get<HomeSummary>('/driver/home-summary')
       .then((res) => {
-        if (!cancelled) setSummary(res.data);
+        if (!cancelled) {setSummary(res.data);}
       })
       .catch(() => {});
     return () => {
@@ -44,7 +44,7 @@ export function HomeActiveDeliveryScreen({route, navigation}: Props) {
   const itemCount = order?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
   const earnings = order?.driverEarnings?.total ?? order?.pricing.deliveryFee;
   const distanceKm = (() => {
-    if (!order?.pickup.latitude || !order.pickup.longitude || !order.address.latitude || !order.address.longitude) return null;
+    if (!order?.pickup.latitude || !order.pickup.longitude || !order.address.latitude || !order.address.longitude) {return null;}
     return haversineKm(order.pickup.latitude, order.pickup.longitude, order.address.latitude, order.address.longitude);
   })();
   const etaMin = distanceKm != null ? Math.max(5, Math.round(distanceKm * 4)) : null;
@@ -155,7 +155,7 @@ export function HomeActiveDeliveryScreen({route, navigation}: Props) {
         <Button
           label={isOutForDelivery ? 'Navigate to Customer' : 'Navigate to Pickup'}
           icon="navigation"
-          onPress={() => navigation.navigate('NavigateToStore', {orderId})}
+          onPress={() => navigation.navigate(isOutForDelivery ? 'CustomerDeliveryDetails' : 'NavigateToStore', {orderId})}
         />
       </View>
     </Screen>

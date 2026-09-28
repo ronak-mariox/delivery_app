@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Button, Icon, IconBackButton, Screen} from '../../components';
+import {Button, IconBackButton, Screen} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
 import {DeliveryOrder, useOrders} from '../../context/OrdersContext';
 import {getApiErrorMessage} from '../../services/api';
@@ -28,7 +28,7 @@ export function RetryDeliveryScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {

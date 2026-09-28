@@ -1,20 +1,9 @@
 import axios, {AxiosError, InternalAxiosRequestConfig} from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {API_BASE_URL, API_ORIGIN, API_TIMEOUT_MS} from '../config';
 
-// Base URL for the Verdant backend.
-//
-//  - iOS Simulator: http://localhost:4000 works as-is.
-//  - Android emulator: `localhost` refers to the emulator itself, not the host
-//    machine — use `http://10.0.2.2:4000` instead.
-//  - Physical device on the same Wi-Fi: use your computer's LAN IP, e.g.
-//    `http://192.168.1.23:4000`.
-//
-// Swap the value below depending on where you're running the app.
-const BASE_URL = 'http://localhost:4000/api';
-
-// The server root (no trailing `/api`) — used to resolve relative asset URLs
-// such as uploaded avatars/documents (served from `/uploads/...`).
-const SERVER_ORIGIN = BASE_URL.replace(/\/api\/?$/, '');
+const BASE_URL = API_BASE_URL;
+const SERVER_ORIGIN = API_ORIGIN;
 
 /** Turns a relative `/uploads/...` path from the backend into an absolute URL. */
 export function resolveAssetUrl(url?: string | null): string | undefined {
@@ -49,17 +38,19 @@ export async function clearTokens(): Promise<void> {
   await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY]);
 }
 
+export type ForcedLogoutReason = 'session_expired' | 'account_restricted';
+
 // Called whenever the API client gives up on refreshing the session (refresh
-// token missing/expired) so the app can reset navigation back to login. Wired
-// up by DriverAuthContext.
-let onForcedLogout: (() => void) | null = null;
-export function registerForcedLogoutHandler(handler: (() => void) | null) {
+// token missing/expired) or the backend says the account is restricted, so the
+// app can reset navigation back to Welcome. Wired up by DriverAuthContext.
+let onForcedLogout: ((reason: ForcedLogoutReason, message?: string) => void) | null = null;
+export function registerForcedLogoutHandler(handler: ((reason: ForcedLogoutReason, message?: string) => void) | null) {
   onForcedLogout = handler;
 }
 
 export const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000,
+  timeout: API_TIMEOUT_MS,
 });
 
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
@@ -112,9 +103,14 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
       }
-      // Refresh failed — force logout.
       await clearTokens();
-      onForcedLogout?.();
+      onForcedLogout?.('session_expired');
+    }
+
+    const body = error.response?.data as ApiErrorBody | undefined;
+    if (error.response?.status === 403 && body?.reason === 'account_restricted') {
+      await clearTokens();
+      onForcedLogout?.('account_restricted', body.error);
     }
 
     return Promise.reject(error);
@@ -151,7 +147,42 @@ export interface ApiErrorDetail {
 
 export interface ApiErrorBody {
   error?: string;
+  reason?: string;
   details?: ApiErrorDetail[];
+  attemptsLeft?: number;
+}
+
+export function getApiErrorStatus(err: unknown): number | undefined {
+  return axios.isAxiosError(err) ? err.response?.status : undefined;
+}
+
+export function getApiErrorBody(err: unknown): ApiErrorBody | undefined {
+  return axios.isAxiosError(err) ? (err.response?.data as ApiErrorBody | undefined) : undefined;
+}
+
+/** Lists may come back as a bare array or wrapped as `{items}` — normalise both. */
+export function unwrapList<T>(data: unknown): T[] {
+  if (Array.isArray(data)) {
+    return data as T[];
+  }
+  if (data && typeof data === 'object' && Array.isArray((data as {items?: unknown}).items)) {
+    return (data as {items: T[]}).items;
+  }
+  return [];
+}
+
+/** Uploads a picked image as issue/emergency evidence and returns its public URL. */
+export async function uploadEvidence(asset: PickedAsset): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', {
+    uri: asset.uri,
+    type: asset.type || 'image/jpeg',
+    name: asset.fileName || `evidence-${Date.now()}.jpg`,
+  } as unknown as Blob);
+  const response = await api.post<{url: string}>('/driver/uploads/evidence', formData, {
+    headers: {'Content-Type': 'multipart/form-data'},
+  });
+  return response.data.url;
 }
 
 /** Extracts a human-readable message from a backend error response. */

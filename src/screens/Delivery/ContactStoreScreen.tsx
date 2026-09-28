@@ -10,7 +10,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ContactStore'>;
 
 function initialsFor(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
+  if (parts.length === 0) {return '?';}
   return parts
     .slice(0, 2)
     .map(p => p[0]?.toUpperCase())
@@ -27,9 +27,9 @@ export function ContactStoreScreen({route, navigation}: Props) {
     let cancelled = false;
     setLoading(true);
     getOrder(orderId)
-      .then(o => { if (!cancelled) setOrder(o); })
+      .then(o => { if (!cancelled) {setOrder(o);} })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => { if (!cancelled) {setLoading(false);} });
     return () => { cancelled = true; };
   }, [orderId, getOrder]);
 

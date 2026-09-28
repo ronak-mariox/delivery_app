@@ -56,9 +56,9 @@ export function RegistrationLandingScreen({navigation}: Props) {
         </View>
 
         <View style={styles.earningsCard}>
-          <Text style={styles.earningsLabel}>ESTIMATED WEEKLY EARNINGS</Text>
-          <Text style={styles.earningsValue}>{'₹8,000 – ₹15,000'}</Text>
-          <Text style={styles.earningsHint}>Based on 6–8 hours/day, 5 days/week in your city</Text>
+          <Text style={styles.earningsLabel}>PAY PER DELIVERY</Text>
+          <Text style={styles.earningsValue}>{'₹30 + bonuses'}</Text>
+          <Text style={styles.earningsHint}>Base pay for every completed delivery, plus incentive bonuses</Text>
         </View>
 
         <View style={styles.actions}>

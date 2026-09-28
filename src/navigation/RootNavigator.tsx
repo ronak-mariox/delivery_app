@@ -27,13 +27,9 @@ import {VerificationInProgressScreen} from '../screens/Registration/Verification
 import {RiderApprovedScreen} from '../screens/Registration/RiderApprovedScreen';
 import {VerificationRejectedScreen} from '../screens/Registration/VerificationRejectedScreen';
 import {LocationPermissionScreen} from '../screens/System/LocationPermissionScreen';
-import {LocationDeniedScreen} from '../screens/System/LocationDeniedScreen';
 import {EnableNotificationsScreen} from '../screens/System/EnableNotificationsScreen';
-import {GPSDisabledScreen} from '../screens/System/GPSDisabledScreen';
-import {EnableGPSInstructionsScreen} from '../screens/System/EnableGPSInstructionsScreen';
 import {FirstTimeSetupScreen} from '../screens/System/FirstTimeSetupScreen';
 import {AccountRestrictedScreen} from '../screens/System/AccountRestrictedScreen';
-import {NoInternetScreen} from '../screens/System/NoInternetScreen';
 import {HomeScreen} from '../screens/Home/HomeScreen';
 import {HomeActiveDeliveryScreen} from '../screens/Home/HomeActiveDeliveryScreen';
 import {NewOrderRequestScreen} from '../screens/Delivery/NewOrderRequestScreen';
@@ -47,7 +43,6 @@ import {NoOrdersInZoneScreen} from '../screens/Home/NoOrdersInZoneScreen';
 import {AssignmentFailedScreen} from '../screens/Delivery/AssignmentFailedScreen';
 import {AcceptingOrderScreen} from '../screens/Delivery/AcceptingOrderScreen';
 import {OrderAcceptedScreen} from '../screens/Delivery/OrderAcceptedScreen';
-import {AssignedDeliveryScreen} from '../screens/Delivery/AssignedDeliveryScreen';
 import {PickupDetailsScreen} from '../screens/Delivery/PickupDetailsScreen';
 import {NavigateToStoreScreen} from '../screens/Delivery/NavigateToStoreScreen';
 import {NavigationActiveScreen} from '../screens/Delivery/NavigationActiveScreen';
@@ -68,6 +63,7 @@ import {OrderPickedUpScreen} from '../screens/Delivery/OrderPickedUpScreen';
 import {PickupFailedScreen} from '../screens/Delivery/PickupFailedScreen';
 import {PickupRetryScreen} from '../screens/Delivery/PickupRetryScreen';
 import {PickupSupportScreen} from '../screens/Delivery/PickupSupportScreen';
+import {CustomerDeliveryDetailsScreen} from '../screens/Delivery/CustomerDeliveryDetailsScreen';
 import {CustomerStartNavigationScreen} from '../screens/Delivery/CustomerStartNavigationScreen';
 import {CustomerNavigationActiveScreen} from '../screens/Delivery/CustomerNavigationActiveScreen';
 import {NearCustomerScreen} from '../screens/Delivery/NearCustomerScreen';
@@ -75,10 +71,10 @@ import {ArrivedAtCustomerScreen} from '../screens/Delivery/ArrivedAtCustomerScre
 import {CallCustomerScreen} from '../screens/Delivery/CallCustomerScreen';
 import {MessageCustomerScreen} from '../screens/Delivery/MessageCustomerScreen';
 import {DeliveryVerificationScreen} from '../screens/Delivery/DeliveryVerificationScreen';
+import {OtpEntryScreen} from '../screens/Delivery/OtpEntryScreen';
 import {DeliveryOtpIncorrectScreen} from '../screens/Delivery/DeliveryOtpIncorrectScreen';
-import {CustomerConfirmedScreen} from '../screens/Delivery/CustomerConfirmedScreen';
 import {HandOverOrderScreen} from '../screens/Delivery/HandOverOrderScreen';
-import {ConfirmingDeliveryScreen} from '../screens/Delivery/ConfirmingDeliveryScreen';
+import {DeliverySuccessScreen} from '../screens/Delivery/DeliverySuccessScreen';
 import {EarningsUpdatedScreen} from '../screens/Delivery/EarningsUpdatedScreen';
 import {CustomerUnavailableScreen} from '../screens/Delivery/CustomerUnavailableScreen';
 import {CallingExceptionScreen} from '../screens/Delivery/CallingExceptionScreen';
@@ -90,7 +86,6 @@ import {UpdateAddressScreen} from '../screens/Delivery/UpdateAddressScreen';
 import {CannotLocateCustomerScreen} from '../screens/Delivery/CannotLocateCustomerScreen';
 import {OrderCancelledByCustomerScreen} from '../screens/Delivery/OrderCancelledByCustomerScreen';
 import {StoreIssueDeliveryScreen} from '../screens/Delivery/StoreIssueDeliveryScreen';
-import {MissingItemReportedScreen} from '../screens/Delivery/MissingItemReportedScreen';
 import {WrongItemInOrderScreen} from '../screens/Delivery/WrongItemInOrderScreen';
 import {PackageDamageDetectedScreen} from '../screens/Delivery/PackageDamageDetectedScreen';
 import {PackageIssueScreen} from '../screens/Delivery/PackageIssueScreen';
@@ -105,12 +100,12 @@ import {IssueSupportContactScreen} from '../screens/Delivery/IssueSupportContact
 import {IssueResolutionScreen} from '../screens/Delivery/IssueResolutionScreen';
 import {RetryDeliveryScreen} from '../screens/Delivery/RetryDeliveryScreen';
 import {ReturnOrderScreen} from '../screens/Delivery/ReturnOrderScreen';
-import {OrderReassignedScreen} from '../screens/Delivery/OrderReassignedScreen';
 import {DeliveryFailedScreen} from '../screens/Delivery/DeliveryFailedScreen';
-import {DeliveryClosedScreen} from '../screens/Delivery/DeliveryClosedScreen';
-import {CustomerDeliveryDetailsScreen} from '../screens/Delivery/CustomerDeliveryDetailsScreen';
-import {OtpEntryScreen} from '../screens/Delivery/OtpEntryScreen';
-import {DeliverySuccessScreen} from '../screens/Delivery/DeliverySuccessScreen';
+import {DeliveryHistoryScreen} from '../screens/Delivery/DeliveryHistoryScreen';
+import {DeliveryHistoryDetailScreen} from '../screens/Delivery/DeliveryHistoryDetailScreen';
+import {DeliveryHistoryEarningsScreen} from '../screens/Delivery/DeliveryHistoryEarningsScreen';
+import {OrderTimelineScreen} from '../screens/Delivery/OrderTimelineScreen';
+import {FailedDeliveriesScreen} from '../screens/Delivery/FailedDeliveriesScreen';
 import {EarningsDashboardScreen} from '../screens/Earnings/EarningsDashboardScreen';
 import {TodaysEarningsScreen} from '../screens/Earnings/TodaysEarningsScreen';
 import {DeliveryEarningsScreen} from '../screens/Earnings/DeliveryEarningsScreen';
@@ -118,10 +113,6 @@ import {EarningsBreakdownScreen} from '../screens/Earnings/EarningsBreakdownScre
 import {WeeklyEarningsScreen} from '../screens/Earnings/WeeklyEarningsScreen';
 import {MonthlyEarningsScreen} from '../screens/Earnings/MonthlyEarningsScreen';
 import {PaymentHistoryScreen} from '../screens/Earnings/PaymentHistoryScreen';
-import {PayoutProcessingScreen} from '../screens/Earnings/PayoutProcessingScreen';
-import {PayoutSuccessfulScreen} from '../screens/Earnings/PayoutSuccessfulScreen';
-import {PayoutFailedScreen} from '../screens/Earnings/PayoutFailedScreen';
-import {BankUPIVerificationIssueScreen} from '../screens/Earnings/BankUPIVerificationIssueScreen';
 import {IncentivesScreen} from '../screens/Earnings/IncentivesScreen';
 import {IncentiveDetailScreen} from '../screens/Earnings/IncentiveDetailScreen';
 import {IncentiveProgressScreen} from '../screens/Earnings/IncentiveProgressScreen';
@@ -133,52 +124,23 @@ import {DeliveriesCompletedScreen} from '../screens/Performance/DeliveriesComple
 import {AcceptanceRateScreen} from '../screens/Performance/AcceptanceRateScreen';
 import {CompletionRateScreen} from '../screens/Performance/CompletionRateScreen';
 import {CustomerRatingScreen} from '../screens/Performance/CustomerRatingScreen';
-import {WeeklyPerformanceScreen} from '../screens/Performance/WeeklyPerformanceScreen';
-import {MonthlyPerformanceScreen} from '../screens/Performance/MonthlyPerformanceScreen';
-import {DeliveryHistoryScreen} from '../screens/Delivery/DeliveryHistoryScreen';
-import {DeliveryHistoryDetailScreen} from '../screens/Delivery/DeliveryHistoryDetailScreen';
-import {DeliveryHistoryEarningsScreen} from '../screens/Delivery/DeliveryHistoryEarningsScreen';
-import {OrderTimelineScreen} from '../screens/Delivery/OrderTimelineScreen';
-import {FailedDeliveriesScreen} from '../screens/Delivery/FailedDeliveriesScreen';
 import {NotificationsScreen} from '../screens/Notifications/NotificationsScreen';
 import {NotificationDetailScreen} from '../screens/Notifications/NotificationDetailScreen';
 import {ProfileScreen} from '../screens/Profile/ProfileScreen';
 import {ProfilePersonalInfoScreen} from '../screens/Profile/ProfilePersonalInfoScreen';
-import {ProfileEditScreen} from '../screens/Profile/ProfileEditScreen';
 import {ProfilePhotoEditScreen} from '../screens/Profile/ProfilePhotoEditScreen';
 import {ProfileAddressScreen} from '../screens/Profile/ProfileAddressScreen';
 import {ProfileEmergencyContactScreen} from '../screens/Profile/ProfileEmergencyContactScreen';
 import {VehicleHubScreen} from '../screens/Vehicle/VehicleHubScreen';
-import {VehicleEditScreen} from '../screens/Vehicle/VehicleEditScreen';
-import {VehicleTypeChangeScreen} from '../screens/Vehicle/VehicleTypeChangeScreen';
 import {VehicleRegistrationScreen} from '../screens/Vehicle/VehicleRegistrationScreen';
 import {VehicleRcDocumentScreen} from '../screens/Vehicle/VehicleRcDocumentScreen';
 import {VehicleInsuranceScreen} from '../screens/Vehicle/VehicleInsuranceScreen';
-import {VehicleVerificationStatusScreen} from '../screens/Vehicle/VehicleVerificationStatusScreen';
-import {VehicleVerificationFailedScreen} from '../screens/Vehicle/VehicleVerificationFailedScreen';
-import {VehicleVerifiedScreen} from '../screens/Vehicle/VehicleVerifiedScreen';
 import {DocumentsHubScreen} from '../screens/Documents/DocumentsHubScreen';
-import {DocumentDrivingLicenceScreen} from '../screens/Documents/DocumentDrivingLicenceScreen';
-import {DocumentInsuranceScreen} from '../screens/Documents/DocumentInsuranceScreen';
-import {DocumentOtherScreen} from '../screens/Documents/DocumentOtherScreen';
 import {DocumentDetailScreen} from '../screens/Documents/DocumentDetailScreen';
-import {DocumentUploadScreen} from '../screens/Documents/DocumentUploadScreen';
 import {DocumentPreviewScreen} from '../screens/Documents/DocumentPreviewScreen';
-import {DocumentReplaceLicenceScreen} from '../screens/Documents/DocumentReplaceLicenceScreen';
-import {DocumentUnderReviewScreen} from '../screens/Documents/DocumentUnderReviewScreen';
-import {DocumentVerifiedScreen} from '../screens/Documents/DocumentVerifiedScreen';
-import {DocumentVerificationFailedScreen} from '../screens/Documents/DocumentVerificationFailedScreen';
-import {DocumentReUploadScreen} from '../screens/Documents/DocumentReUploadScreen';
 import {PaymentHubScreen} from '../screens/Payments/PaymentHubScreen';
 import {PaymentBankAccountScreen} from '../screens/Payments/PaymentBankAccountScreen';
 import {PaymentUpiDetailsScreen} from '../screens/Payments/PaymentUpiDetailsScreen';
-import {PaymentAddBankAccountScreen} from '../screens/Payments/PaymentAddBankAccountScreen';
-import {PaymentEditBankDetailsScreen} from '../screens/Payments/PaymentEditBankDetailsScreen';
-import {PaymentBankVerificationStatusScreen} from '../screens/Payments/PaymentBankVerificationStatusScreen';
-import {PaymentBankVerificationFailedScreen} from '../screens/Payments/PaymentBankVerificationFailedScreen';
-import {PaymentBankVerifiedScreen} from '../screens/Payments/PaymentBankVerifiedScreen';
-import {PaymentUpiAddedScreen} from '../screens/Payments/PaymentUpiAddedScreen';
-import {PaymentUpiVerificationFailedScreen} from '../screens/Payments/PaymentUpiVerificationFailedScreen';
 import {SupportHubScreen} from '../screens/Support/SupportHubScreen';
 import {SupportFaqScreen} from '../screens/Support/SupportFaqScreen';
 import {SupportDeliveryIssuesScreen} from '../screens/Support/SupportDeliveryIssuesScreen';
@@ -190,27 +152,7 @@ import {SupportStoreIssuesScreen} from '../screens/Support/SupportStoreIssuesScr
 import {SupportCustomerIssuesScreen} from '../screens/Support/SupportCustomerIssuesScreen';
 import {SupportTechnicalIssuesScreen} from '../screens/Support/SupportTechnicalIssuesScreen';
 import {SupportOtherIssuesScreen} from '../screens/Support/SupportOtherIssuesScreen';
-import {SupportSelectIssueTypeScreen} from '../screens/Support/SupportSelectIssueTypeScreen';
-import {TicketIssueDetailsScreen} from '../screens/Tickets/TicketIssueDetailsScreen';
-import {TicketUploadEvidenceScreen} from '../screens/Tickets/TicketUploadEvidenceScreen';
-import {TicketReviewSubmitScreen} from '../screens/Tickets/TicketReviewSubmitScreen';
-import {TicketSubmittedScreen} from '../screens/Tickets/TicketSubmittedScreen';
-import {TicketDetailScreen} from '../screens/Tickets/TicketDetailScreen';
-import {TicketStatusScreen} from '../screens/Tickets/TicketStatusScreen';
-import {TicketChatScreen} from '../screens/Tickets/TicketChatScreen';
-import {TicketResolvedScreen} from '../screens/Tickets/TicketResolvedScreen';
-import {TicketReopenScreen} from '../screens/Tickets/TicketReopenScreen';
-import {TicketEscalateScreen} from '../screens/Tickets/TicketEscalateScreen';
-import {TicketClosedScreen} from '../screens/Tickets/TicketClosedScreen';
-import {AccountSecurityScreen} from '../screens/Account/AccountSecurityScreen';
-import {AccountChangeMobileNumberScreen} from '../screens/Account/AccountChangeMobileNumberScreen';
-import {AccountVerifyNewNumberScreen} from '../screens/Account/AccountVerifyNewNumberScreen';
-import {AccountActiveSessionsScreen} from '../screens/Account/AccountActiveSessionsScreen';
 import {AccountLogoutScreen} from '../screens/Account/AccountLogoutScreen';
-import {AccountLoggingOutScreen} from '../screens/Account/AccountLoggingOutScreen';
-import {AccountNotificationSettingsScreen} from '../screens/Account/AccountNotificationSettingsScreen';
-import {AccountLocationSettingsScreen} from '../screens/Account/AccountLocationSettingsScreen';
-import {AccountLanguageRegionScreen} from '../screens/Account/AccountLanguageRegionScreen';
 import {AccountPrivacyScreen} from '../screens/Account/AccountPrivacyScreen';
 import {AccountTermsScreen} from '../screens/Account/AccountTermsScreen';
 import {AccountPrivacyPolicyScreen} from '../screens/Account/AccountPrivacyPolicyScreen';
@@ -222,29 +164,6 @@ import {EmergencySupportScreen} from '../screens/Emergency/EmergencySupportScree
 import {EmergencyIncidentReportScreen} from '../screens/Emergency/EmergencyIncidentReportScreen';
 import {EmergencyIncidentReportedScreen} from '../screens/Emergency/EmergencyIncidentReportedScreen';
 import {EmergencyResolvedScreen} from '../screens/Emergency/EmergencyResolvedScreen';
-import {DeactivateAccountScreen} from '../screens/Deactivate/DeactivateAccountScreen';
-import {DeactivateReasonScreen} from '../screens/Deactivate/DeactivateReasonScreen';
-import {DeactivateActiveDeliveryBlockScreen} from '../screens/Deactivate/DeactivateActiveDeliveryBlockScreen';
-import {DeactivateConfirmScreen} from '../screens/Deactivate/DeactivateConfirmScreen';
-import {DeactivateDoneScreen} from '../screens/Deactivate/DeactivateDoneScreen';
-import {StateSkeletonLoadingScreen} from '../screens/SystemState/StateSkeletonLoadingScreen';
-import {StateEmptyScreen} from '../screens/SystemState/StateEmptyScreen';
-import {StateNoDeliveriesScreen} from '../screens/SystemState/StateNoDeliveriesScreen';
-import {StateServerErrorScreen} from '../screens/SystemState/StateServerErrorScreen';
-import {StateGPSErrorScreen} from '../screens/SystemState/StateGPSErrorScreen';
-import {StateSessionExpiredScreen} from '../screens/SystemState/StateSessionExpiredScreen';
-import {StateAccessDeniedScreen} from '../screens/SystemState/StateAccessDeniedScreen';
-import {StateAccountSuspendedScreen} from '../screens/SystemState/StateAccountSuspendedScreen';
-import {StateVerificationPendingScreen} from '../screens/SystemState/StateVerificationPendingScreen';
-import {StateVerificationFailedScreen} from '../screens/SystemState/StateVerificationFailedScreen';
-import {StateUploadFailedScreen} from '../screens/SystemState/StateUploadFailedScreen';
-import {StateChangesNotSavedScreen} from '../screens/SystemState/StateChangesNotSavedScreen';
-import {StateActionFailedScreen} from '../screens/SystemState/StateActionFailedScreen';
-import {StateGenericErrorScreen} from '../screens/SystemState/StateGenericErrorScreen';
-import {StateRetryingScreen} from '../screens/SystemState/StateRetryingScreen';
-import {StateSessionRecoveryScreen} from '../screens/SystemState/StateSessionRecoveryScreen';
-import {StateSuccessScreen} from '../screens/SystemState/StateSuccessScreen';
-import {StateWarningInsuranceScreen} from '../screens/SystemState/StateWarningInsuranceScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -277,22 +196,14 @@ export function RootNavigator() {
       <Stack.Screen name="RiderApproved" component={RiderApprovedScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="VerificationRejected" component={VerificationRejectedScreen} />
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="LocationDenied" component={LocationDeniedScreen} />
       <Stack.Screen name="EnableNotifications" component={EnableNotificationsScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="GPSDisabled" component={GPSDisabledScreen} />
-      <Stack.Screen name="EnableGPSInstructions" component={EnableGPSInstructionsScreen} />
       <Stack.Screen name="FirstTimeSetup" component={FirstTimeSetupScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="AccountRestricted" component={AccountRestrictedScreen} />
-      <Stack.Screen name="NoInternet" component={NoInternetScreen} />
       <Stack.Screen name="Home" component={HomeScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="HomeActiveDelivery" component={HomeActiveDeliveryScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="NewOrderRequest" component={NewOrderRequestScreen} options={{gestureEnabled: false, animation: 'slide_from_bottom'}} />
       <Stack.Screen name="OrderRequestDetails" component={OrderRequestDetailsScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen
-        name="RejectConfirmSheet"
-        component={RejectConfirmSheetScreen}
-        options={{presentation: 'transparentModal', animation: 'fade', headerShown: false}}
-      />
+      <Stack.Screen name="RejectConfirmSheet" component={RejectConfirmSheetScreen} options={{presentation: 'transparentModal', animation: 'fade', headerShown: false}} />
       <Stack.Screen name="RejectReason" component={RejectReasonScreen} />
       <Stack.Screen name="OrderRejected" component={OrderRejectedScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="RequestTimedOut" component={RequestTimedOutScreen} options={{gestureEnabled: false}} />
@@ -301,7 +212,6 @@ export function RootNavigator() {
       <Stack.Screen name="AssignmentFailed" component={AssignmentFailedScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="AcceptingOrder" component={AcceptingOrderScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="OrderAccepted" component={OrderAcceptedScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="AssignedDelivery" component={AssignedDeliveryScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="PickupDetails" component={PickupDetailsScreen} />
       <Stack.Screen name="NavigateToStore" component={NavigateToStoreScreen} />
       <Stack.Screen name="NavigationActive" component={NavigationActiveScreen} options={{gestureEnabled: false}} />
@@ -332,9 +242,7 @@ export function RootNavigator() {
       <Stack.Screen name="DeliveryVerification" component={DeliveryVerificationScreen} />
       <Stack.Screen name="OtpEntry" component={OtpEntryScreen} />
       <Stack.Screen name="DeliveryOtpIncorrect" component={DeliveryOtpIncorrectScreen} />
-      <Stack.Screen name="CustomerConfirmed" component={CustomerConfirmedScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="HandOverOrder" component={HandOverOrderScreen} />
-      <Stack.Screen name="ConfirmingDelivery" component={ConfirmingDeliveryScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="DeliverySuccess" component={DeliverySuccessScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="EarningsUpdated" component={EarningsUpdatedScreen} />
       <Stack.Screen name="CustomerUnavailable" component={CustomerUnavailableScreen} />
@@ -347,7 +255,6 @@ export function RootNavigator() {
       <Stack.Screen name="CannotLocateCustomer" component={CannotLocateCustomerScreen} />
       <Stack.Screen name="OrderCancelledByCustomer" component={OrderCancelledByCustomerScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="StoreIssueDelivery" component={StoreIssueDeliveryScreen} />
-      <Stack.Screen name="MissingItemReported" component={MissingItemReportedScreen} />
       <Stack.Screen name="WrongItemInOrder" component={WrongItemInOrderScreen} />
       <Stack.Screen name="PackageDamageDetected" component={PackageDamageDetectedScreen} />
       <Stack.Screen name="PackageIssue" component={PackageIssueScreen} />
@@ -362,9 +269,12 @@ export function RootNavigator() {
       <Stack.Screen name="IssueResolution" component={IssueResolutionScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="RetryDelivery" component={RetryDeliveryScreen} />
       <Stack.Screen name="ReturnOrder" component={ReturnOrderScreen} />
-      <Stack.Screen name="OrderReassigned" component={OrderReassignedScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="DeliveryFailed" component={DeliveryFailedScreen} />
-      <Stack.Screen name="DeliveryClosed" component={DeliveryClosedScreen} options={{gestureEnabled: false}} />
+      <Stack.Screen name="DeliveryHistory" component={DeliveryHistoryScreen} />
+      <Stack.Screen name="DeliveryHistoryDetail" component={DeliveryHistoryDetailScreen} />
+      <Stack.Screen name="DeliveryHistoryEarnings" component={DeliveryHistoryEarningsScreen} />
+      <Stack.Screen name="OrderTimeline" component={OrderTimelineScreen} />
+      <Stack.Screen name="FailedDeliveries" component={FailedDeliveriesScreen} />
       <Stack.Screen name="EarningsDashboard" component={EarningsDashboardScreen} />
       <Stack.Screen name="TodaysEarnings" component={TodaysEarningsScreen} />
       <Stack.Screen name="DeliveryEarnings" component={DeliveryEarningsScreen} />
@@ -372,10 +282,6 @@ export function RootNavigator() {
       <Stack.Screen name="WeeklyEarnings" component={WeeklyEarningsScreen} />
       <Stack.Screen name="MonthlyEarnings" component={MonthlyEarningsScreen} />
       <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
-      <Stack.Screen name="PayoutProcessing" component={PayoutProcessingScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="PayoutSuccessful" component={PayoutSuccessfulScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="PayoutFailed" component={PayoutFailedScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="BankUPIVerificationIssue" component={BankUPIVerificationIssueScreen} />
       <Stack.Screen name="Incentives" component={IncentivesScreen} />
       <Stack.Screen name="IncentiveDetail" component={IncentiveDetailScreen} />
       <Stack.Screen name="IncentiveProgress" component={IncentiveProgressScreen} />
@@ -387,52 +293,23 @@ export function RootNavigator() {
       <Stack.Screen name="AcceptanceRate" component={AcceptanceRateScreen} />
       <Stack.Screen name="CompletionRate" component={CompletionRateScreen} />
       <Stack.Screen name="CustomerRating" component={CustomerRatingScreen} />
-      <Stack.Screen name="WeeklyPerformance" component={WeeklyPerformanceScreen} />
-      <Stack.Screen name="MonthlyPerformance" component={MonthlyPerformanceScreen} />
-      <Stack.Screen name="DeliveryHistory" component={DeliveryHistoryScreen} />
-      <Stack.Screen name="DeliveryHistoryDetail" component={DeliveryHistoryDetailScreen} />
-      <Stack.Screen name="DeliveryHistoryEarnings" component={DeliveryHistoryEarningsScreen} />
-      <Stack.Screen name="OrderTimeline" component={OrderTimelineScreen} />
-      <Stack.Screen name="FailedDeliveries" component={FailedDeliveriesScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="ProfilePersonalInfo" component={ProfilePersonalInfoScreen} />
-      <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
       <Stack.Screen name="ProfilePhotoEdit" component={ProfilePhotoEditScreen} />
       <Stack.Screen name="ProfileAddress" component={ProfileAddressScreen} />
       <Stack.Screen name="ProfileEmergencyContact" component={ProfileEmergencyContactScreen} />
       <Stack.Screen name="VehicleHub" component={VehicleHubScreen} />
-      <Stack.Screen name="VehicleEdit" component={VehicleEditScreen} />
-      <Stack.Screen name="VehicleTypeChange" component={VehicleTypeChangeScreen} />
       <Stack.Screen name="VehicleRegistration" component={VehicleRegistrationScreen} />
       <Stack.Screen name="VehicleRcDocument" component={VehicleRcDocumentScreen} />
       <Stack.Screen name="VehicleInsurance" component={VehicleInsuranceScreen} />
-      <Stack.Screen name="VehicleVerificationStatus" component={VehicleVerificationStatusScreen} />
-      <Stack.Screen name="VehicleVerificationFailed" component={VehicleVerificationFailedScreen} />
-      <Stack.Screen name="VehicleVerified" component={VehicleVerifiedScreen} options={{gestureEnabled: false}} />
       <Stack.Screen name="DocumentsHub" component={DocumentsHubScreen} />
-      <Stack.Screen name="DocumentDrivingLicence" component={DocumentDrivingLicenceScreen} />
-      <Stack.Screen name="DocumentInsurance" component={DocumentInsuranceScreen} />
-      <Stack.Screen name="DocumentOther" component={DocumentOtherScreen} />
       <Stack.Screen name="DocumentDetail" component={DocumentDetailScreen} />
-      <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen} />
       <Stack.Screen name="DocumentPreview" component={DocumentPreviewScreen} />
-      <Stack.Screen name="DocumentReplaceLicence" component={DocumentReplaceLicenceScreen} />
-      <Stack.Screen name="DocumentUnderReview" component={DocumentUnderReviewScreen} />
-      <Stack.Screen name="DocumentVerified" component={DocumentVerifiedScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="DocumentVerificationFailed" component={DocumentVerificationFailedScreen} />
-      <Stack.Screen name="DocumentReUpload" component={DocumentReUploadScreen} />
       <Stack.Screen name="PaymentHub" component={PaymentHubScreen} />
       <Stack.Screen name="PaymentBankAccount" component={PaymentBankAccountScreen} />
       <Stack.Screen name="PaymentUpiDetails" component={PaymentUpiDetailsScreen} />
-      <Stack.Screen name="PaymentAddBankAccount" component={PaymentAddBankAccountScreen} />
-      <Stack.Screen name="PaymentEditBankDetails" component={PaymentEditBankDetailsScreen} />
-      <Stack.Screen name="PaymentBankVerificationStatus" component={PaymentBankVerificationStatusScreen} />
-      <Stack.Screen name="PaymentBankVerificationFailed" component={PaymentBankVerificationFailedScreen} />
-      <Stack.Screen name="PaymentBankVerified" component={PaymentBankVerifiedScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="PaymentUpiAdded" component={PaymentUpiAddedScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="PaymentUpiVerificationFailed" component={PaymentUpiVerificationFailedScreen} />
       <Stack.Screen name="SupportHub" component={SupportHubScreen} />
       <Stack.Screen name="SupportFaq" component={SupportFaqScreen} />
       <Stack.Screen name="SupportDeliveryIssues" component={SupportDeliveryIssuesScreen} />
@@ -444,27 +321,7 @@ export function RootNavigator() {
       <Stack.Screen name="SupportCustomerIssues" component={SupportCustomerIssuesScreen} />
       <Stack.Screen name="SupportTechnicalIssues" component={SupportTechnicalIssuesScreen} />
       <Stack.Screen name="SupportOtherIssues" component={SupportOtherIssuesScreen} />
-      <Stack.Screen name="SupportSelectIssueType" component={SupportSelectIssueTypeScreen} />
-      <Stack.Screen name="TicketIssueDetails" component={TicketIssueDetailsScreen} />
-      <Stack.Screen name="TicketUploadEvidence" component={TicketUploadEvidenceScreen} />
-      <Stack.Screen name="TicketReviewSubmit" component={TicketReviewSubmitScreen} />
-      <Stack.Screen name="TicketSubmitted" component={TicketSubmittedScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
-      <Stack.Screen name="TicketStatus" component={TicketStatusScreen} />
-      <Stack.Screen name="TicketChat" component={TicketChatScreen} />
-      <Stack.Screen name="TicketResolved" component={TicketResolvedScreen} />
-      <Stack.Screen name="TicketReopen" component={TicketReopenScreen} />
-      <Stack.Screen name="TicketEscalate" component={TicketEscalateScreen} />
-      <Stack.Screen name="TicketClosed" component={TicketClosedScreen} />
-      <Stack.Screen name="AccountSecurity" component={AccountSecurityScreen} />
-      <Stack.Screen name="AccountChangeMobileNumber" component={AccountChangeMobileNumberScreen} />
-      <Stack.Screen name="AccountVerifyNewNumber" component={AccountVerifyNewNumberScreen} />
-      <Stack.Screen name="AccountActiveSessions" component={AccountActiveSessionsScreen} />
       <Stack.Screen name="AccountLogout" component={AccountLogoutScreen} />
-      <Stack.Screen name="AccountLoggingOut" component={AccountLoggingOutScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="AccountNotificationSettings" component={AccountNotificationSettingsScreen} />
-      <Stack.Screen name="AccountLocationSettings" component={AccountLocationSettingsScreen} />
-      <Stack.Screen name="AccountLanguageRegion" component={AccountLanguageRegionScreen} />
       <Stack.Screen name="AccountPrivacy" component={AccountPrivacyScreen} />
       <Stack.Screen name="AccountTerms" component={AccountTermsScreen} />
       <Stack.Screen name="AccountPrivacyPolicy" component={AccountPrivacyPolicyScreen} />
@@ -476,29 +333,6 @@ export function RootNavigator() {
       <Stack.Screen name="EmergencyIncidentReport" component={EmergencyIncidentReportScreen} />
       <Stack.Screen name="EmergencyIncidentReported" component={EmergencyIncidentReportedScreen} />
       <Stack.Screen name="EmergencyResolved" component={EmergencyResolvedScreen} />
-      <Stack.Screen name="DeactivateAccount" component={DeactivateAccountScreen} />
-      <Stack.Screen name="DeactivateReason" component={DeactivateReasonScreen} />
-      <Stack.Screen name="DeactivateActiveDeliveryBlock" component={DeactivateActiveDeliveryBlockScreen} />
-      <Stack.Screen name="DeactivateConfirm" component={DeactivateConfirmScreen} />
-      <Stack.Screen name="DeactivateDone" component={DeactivateDoneScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="StateSkeletonLoading" component={StateSkeletonLoadingScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="StateEmpty" component={StateEmptyScreen} />
-      <Stack.Screen name="StateNoDeliveries" component={StateNoDeliveriesScreen} />
-      <Stack.Screen name="StateServerError" component={StateServerErrorScreen} />
-      <Stack.Screen name="StateGPSError" component={StateGPSErrorScreen} />
-      <Stack.Screen name="StateSessionExpired" component={StateSessionExpiredScreen} />
-      <Stack.Screen name="StateAccessDenied" component={StateAccessDeniedScreen} />
-      <Stack.Screen name="StateAccountSuspended" component={StateAccountSuspendedScreen} />
-      <Stack.Screen name="StateVerificationPending" component={StateVerificationPendingScreen} />
-      <Stack.Screen name="StateVerificationFailed" component={StateVerificationFailedScreen} />
-      <Stack.Screen name="StateUploadFailed" component={StateUploadFailedScreen} />
-      <Stack.Screen name="StateChangesNotSaved" component={StateChangesNotSavedScreen} />
-      <Stack.Screen name="StateActionFailed" component={StateActionFailedScreen} />
-      <Stack.Screen name="StateGenericError" component={StateGenericErrorScreen} />
-      <Stack.Screen name="StateRetrying" component={StateRetryingScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="StateSessionRecovery" component={StateSessionRecoveryScreen} options={{gestureEnabled: false}} />
-      <Stack.Screen name="StateSuccess" component={StateSuccessScreen} />
-      <Stack.Screen name="StateWarningInsurance" component={StateWarningInsuranceScreen} />
     </Stack.Navigator>
   );
 }

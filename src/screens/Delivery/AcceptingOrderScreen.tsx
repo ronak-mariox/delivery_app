@@ -19,7 +19,7 @@ export function AcceptingOrderScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setPreview(o);
+        if (!cancelled) {setPreview(o);}
       })
       .catch(() => {});
 
@@ -29,11 +29,11 @@ export function AcceptingOrderScreen({route, navigation}: Props) {
         const elapsed = Date.now() - startedAt;
         const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
         setTimeout(() => {
-          if (!cancelled) navigation.replace('OrderAccepted', {orderId});
+          if (!cancelled) {navigation.replace('OrderAccepted', {orderId});}
         }, wait);
       })
       .catch(() => {
-        if (!cancelled) navigation.replace('AssignmentFailed', {orderId});
+        if (!cancelled) {navigation.replace('AssignmentFailed', {orderId});}
       });
 
     return () => {
@@ -43,7 +43,7 @@ export function AcceptingOrderScreen({route, navigation}: Props) {
 
   const distanceLabel = (() => {
     const p = preview;
-    if (!p?.pickup.latitude || !p.pickup.longitude || !p.address.latitude || !p.address.longitude) return '—';
+    if (!p?.pickup.latitude || !p.pickup.longitude || !p.address.latitude || !p.address.longitude) {return '—';}
     const km = haversineKm(p.pickup.latitude, p.pickup.longitude, p.address.latitude, p.address.longitude);
     return `${km.toFixed(1)} km · ~${Math.max(5, Math.round(km * 4))} min`;
   })();

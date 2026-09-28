@@ -28,11 +28,11 @@ export function IssueResolutionScreen({route, navigation}: Props) {
   const [order, setOrder] = useState<DeliveryOrder | null>(passedOrder ?? null);
 
   useEffect(() => {
-    if (passedOrder) return;
+    if (passedOrder) {return;}
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {

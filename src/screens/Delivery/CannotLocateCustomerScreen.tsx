@@ -17,7 +17,7 @@ export function CannotLocateCustomerScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
@@ -69,7 +69,7 @@ export function CannotLocateCustomerScreen({route, navigation}: Props) {
         <TouchableOpacity
           style={styles.optionCard}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate('DeliverySuccess', {orderId})}>
+          onPress={() => navigation.navigate('OtpEntry', {orderId})}>
           <View style={styles.optionIconNeutral}>
             <Icon name="package" size={20} color={colors.textSecondary} />
           </View>
@@ -79,16 +79,13 @@ export function CannotLocateCustomerScreen({route, navigation}: Props) {
         <TouchableOpacity
           style={[styles.optionCard, styles.optionCardDanger]}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate('ReturnOrder', {orderId})}>
+          onPress={() => navigation.navigate('CannotComplete', {orderId})}>
           <View style={styles.optionIconDanger}>
             <Icon name="x" size={20} color={colors.danger} />
           </View>
-          <Text style={styles.optionTitleDanger}>Mark undeliverable — Return order</Text>
+          <Text style={styles.optionTitleDanger}>Cannot complete delivery</Text>
         </TouchableOpacity>
 
-        <View style={styles.noteBanner}>
-          <Text style={styles.noteText}>Marking undeliverable will not affect your performance score if properly documented.</Text>
-        </View>
       </ScrollView>
 
       <View style={styles.footer}>

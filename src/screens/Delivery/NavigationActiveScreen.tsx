@@ -18,18 +18,13 @@ export function NavigationActiveScreen({route, navigation}: Props) {
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [orderId, getOrder]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => navigation.replace('ArrivingAtStore', {orderId}), 4000);
-    return () => clearTimeout(timer);
-  }, [navigation, orderId]);
 
   const storeName = order?.pickup.name ?? 'the store';
 
@@ -62,13 +57,9 @@ export function NavigationActiveScreen({route, navigation}: Props) {
         </View>
 
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.8}>
-            <Icon name="volume-off" size={20} color={colors.textSecondary} />
-            <Text style={styles.actionLabel}>Mute</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.8}>
-            <Icon name="grid" size={20} color={colors.textSecondary} />
-            <Text style={styles.actionLabel}>Overview</Text>
+          <TouchableOpacity style={styles.actionButton} activeOpacity={0.8} onPress={() => navigation.replace('ArrivingAtStore', {orderId})}>
+            <Icon name="map-pin" size={20} color={colors.primary} />
+            <Text style={styles.actionLabel}>I've arrived</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} activeOpacity={0.8} onPress={() => navigation.goBack()}>
             <Icon name="x" size={20} color={colors.textSecondary} />

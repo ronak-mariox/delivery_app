@@ -108,7 +108,7 @@ export function PaymentDetailsScreen({navigation}: Props) {
         onChangeText={t => setIfsc(t.toUpperCase())}
         autoCapitalize="characters"
         maxLength={11}
-        placeholder="e.g. HDFC0001234"
+        placeholder="11-character IFSC code"
         helperText="11-character IFSC code"
       />
 

@@ -15,7 +15,6 @@ const VEHICLES: {
   title: string;
   tags: {label: string; highlighted?: boolean}[];
   subtitle: string;
-  price: string;
   image: ImageSourcePropType;
 }[] = [
   {
@@ -23,7 +22,6 @@ const VEHICLES: {
     title: 'Motorbike',
     tags: [{label: 'Most Popular', highlighted: true}, {label: 'Higher Pay', highlighted: true}],
     subtitle: '100cc – 350cc engine',
-    price: '₹10,000 – ₹18,000/week',
     image: require('../../assets/images/vehicle-motorbike.png'),
   },
   {
@@ -31,7 +29,6 @@ const VEHICLES: {
     title: 'Scooter',
     tags: [{label: 'Easy Ride'}],
     subtitle: '50cc – 125cc automatic',
-    price: '₹7,000 – ₹13,000/week',
     image: require('../../assets/images/vehicle-scooter.png'),
   },
   {
@@ -39,7 +36,6 @@ const VEHICLES: {
     title: 'Bicycle / E-Bike',
     tags: [{label: 'Eco Friendly'}],
     subtitle: 'Pedal or electric assist',
-    price: '₹4,000 – ₹7,000/week',
     image: require('../../assets/images/vehicle-bicycle.png'),
   },
   {
@@ -47,7 +43,6 @@ const VEHICLES: {
     title: 'Other Vehicle',
     tags: [{label: 'Cargo'}, {label: 'High Capacity'}],
     subtitle: '3-wheeler, van, cargo',
-    price: '₹12,000 – ₹22,000/week',
     image: require('../../assets/images/vehicle-other.png'),
   },
 ];
@@ -101,7 +96,6 @@ export function VehicleTypeScreen({navigation}: Props) {
                 ))}
               </View>
               <Text style={styles.subtitle}>{vehicle.subtitle}</Text>
-              <Text style={[styles.price, isSelected && styles.priceSelected]}>{vehicle.price}</Text>
             </View>
             <View style={[styles.radio, isSelected && styles.radioSelected]}>{isSelected && <View style={styles.radioDot} />}</View>
           </TouchableOpacity>
@@ -135,8 +129,6 @@ const styles = StyleSheet.create({
   tagText: {...typography.overline, fontSize: 10, color: colors.textSecondary},
   tagTextHighlighted: {color: colors.white},
   subtitle: {...typography.caption, color: colors.textSecondary},
-  price: {...typography.captionSemibold, color: colors.textLabel},
-  priceSelected: {color: colors.primary},
   radio: {width: 24, height: 24, borderRadius: radius.md, borderWidth: 2, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center'},
   radioSelected: {borderColor: colors.primary, backgroundColor: colors.primary},
   radioDot: {width: 10, height: 10, borderRadius: 5, backgroundColor: colors.white},

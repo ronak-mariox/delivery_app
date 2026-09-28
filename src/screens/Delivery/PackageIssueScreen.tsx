@@ -20,7 +20,7 @@ export function PackageIssueScreen({route, navigation}: Props) {
   useEffect(() => {
     let cancelled = false;
     getOrder(orderId)
-      .then(o => { if (!cancelled) setOrder(o); })
+      .then(o => { if (!cancelled) {setOrder(o);} })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [orderId, getOrder]);

@@ -26,11 +26,11 @@ export function IssueSupportContactScreen({route, navigation}: Props) {
   const [escalating, setEscalating] = useState(false);
 
   useEffect(() => {
-    if (passedOrder) return;
+    if (passedOrder) {return;}
     let cancelled = false;
     getOrder(orderId)
       .then((o) => {
-        if (!cancelled) setOrder(o);
+        if (!cancelled) {setOrder(o);}
       })
       .catch(() => {});
     return () => {

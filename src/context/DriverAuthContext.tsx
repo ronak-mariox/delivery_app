@@ -1,6 +1,8 @@
 import React, {createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState} from 'react';
+import {Alert} from 'react-native';
 import axios from 'axios';
-import {api, clearTokens, getAccessToken, getRefreshToken, registerForcedLogoutHandler, setTokens} from '../services/api';
+import {api, clearTokens, ForcedLogoutReason, getAccessToken, getRefreshToken, registerForcedLogoutHandler, setTokens} from '../services/api';
+import {resetToRoute} from '../navigation/navigationRef';
 
 const SESSION_RESTORE_RETRIES = 2;
 const SESSION_RESTORE_RETRY_DELAY_MS = 800;
@@ -9,16 +11,97 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(() => resolve(), ms));
 }
 
+export type DriverStatus = 'pending' | 'active' | 'suspended' | 'rejected';
+export type KycStatus = 'pending' | 'verified' | 'rejected';
+export type VehicleType = 'motorbike' | 'scooter' | 'bicycle' | 'other';
+export type DriverDocumentKey = 'license_front' | 'license_back' | 'rc' | 'insurance';
+
+export interface DriverPersonalInfo {
+  fullName?: string | null;
+  email?: string | null;
+  dob?: string | null;
+  gender?: 'female' | 'male' | 'other' | null;
+}
+
+export interface DriverAddress {
+  line1: string;
+  area: string;
+  city: string;
+  state: string;
+  pincode: string;
+  addressType: 'home' | 'work' | 'other';
+}
+
+export interface DriverEmergencyContact {
+  name: string;
+  relationship: string;
+  mobile: string;
+  altMobile?: string;
+}
+
+export interface DriverVehicleDetails {
+  registrationNumber: string;
+  brand: string;
+  model: string;
+  year: number;
+  fuelType: string;
+  color: string;
+  capacity?: string;
+}
+
+export interface DriverInsuranceDetails {
+  insuranceType: string;
+  policyNumber: string;
+  validFrom: string;
+  validUntil: string;
+}
+
+export interface DriverBankDetails {
+  accountHolderName: string;
+  accountNumber: string;
+  ifsc: string;
+  upiId?: string;
+}
+
 export interface Driver {
   id: string;
   phone: string;
+  // The backend has sent these both flat and nested under `personalInfo` — read via driverName()/driverPersonalInfo().
   fullName?: string | null;
   email?: string | null;
+  dob?: string | null;
+  gender?: 'female' | 'male' | 'other' | null;
+  personalInfo?: DriverPersonalInfo | null;
   avatarUrl?: string | null;
-  status?: 'pending' | 'active' | 'suspended' | 'rejected';
-  kycStatus?: 'pending' | 'verified' | 'rejected';
+  status?: DriverStatus;
+  kycStatus?: KycStatus;
   registrationStep?: string | null;
-  [key: string]: unknown;
+  referenceId?: string | null;
+  rejectionReason?: string | null;
+  isOnline?: boolean;
+  address?: DriverAddress | null;
+  emergencyContact?: DriverEmergencyContact | null;
+  vehicleType?: VehicleType | null;
+  vehicleDetails?: DriverVehicleDetails | null;
+  documents?: Partial<Record<DriverDocumentKey, string>> | null;
+  insuranceDetails?: DriverInsuranceDetails | null;
+  bankDetails?: DriverBankDetails | null;
+  currentLocation?: {lat: number; lng: number; updatedAt: string} | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export function driverPersonalInfo(driver: Driver | null | undefined): DriverPersonalInfo {
+  return {
+    fullName: driver?.personalInfo?.fullName ?? driver?.fullName ?? null,
+    email: driver?.personalInfo?.email ?? driver?.email ?? null,
+    dob: driver?.personalInfo?.dob ?? driver?.dob ?? null,
+    gender: driver?.personalInfo?.gender ?? driver?.gender ?? null,
+  };
+}
+
+export function driverName(driver: Driver | null | undefined, fallback = 'Driver'): string {
+  return driverPersonalInfo(driver).fullName || fallback;
 }
 
 export interface OtpRequestResult {
@@ -56,7 +139,15 @@ export function DriverAuthProvider({children}: PropsWithChildren<{}>) {
   }, []);
 
   useEffect(() => {
-    registerForcedLogoutHandler(() => clearSession());
+    registerForcedLogoutHandler((reason: ForcedLogoutReason, message?: string) => {
+      clearSession();
+      resetToRoute('Welcome');
+      if (reason === 'account_restricted') {
+        Alert.alert('Account restricted', message ?? 'This account has been restricted. Contact support for help.');
+      } else {
+        Alert.alert('Session expired', 'Your session has timed out. Please log in again.');
+      }
+    });
     return () => registerForcedLogoutHandler(null);
   }, [clearSession]);
 

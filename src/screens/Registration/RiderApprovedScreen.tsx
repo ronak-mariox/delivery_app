@@ -1,33 +1,22 @@
-import React, {useState} from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React from 'react';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Button, Icon, Screen} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
+import {driverName, useDriverAuth} from '../../context/DriverAuthContext';
+import {VEHICLE_TYPE_LABEL} from '../Profile/driverDisplay';
 import LogoMark from '../../assets/brand/logo-mark.svg';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RiderApproved'>;
 
-const DETAILS = [
-  {label: 'Rider ID', value: 'VR-088234'},
-  {label: 'Vehicle', value: 'KA 05 MG 7734'},
-  {label: 'Zone', value: 'Bengaluru Central'},
-  {label: 'Active Since', value: 'Today'},
-];
-
-const CHECKLIST = [
-  'Download the Verdant Rider Partner App',
-  'Complete mandatory safety training (15 min)',
-  'Review delivery zone guidelines',
-  'Set your first availability slot',
-];
-
 export function RiderApprovedScreen({navigation}: Props) {
-  const [checked, setChecked] = useState<boolean[]>(() => CHECKLIST.map(() => false));
-
-  const toggle = (index: number) => {
-    setChecked(prev => prev.map((v, i) => (i === index ? !v : v)));
-  };
+  const {driver} = useDriverAuth();
+  const details = [
+    {label: 'Reference ID', value: driver?.referenceId},
+    {label: 'Vehicle', value: driver?.vehicleDetails?.registrationNumber},
+    {label: 'Vehicle Type', value: driver?.vehicleType ? VEHICLE_TYPE_LABEL[driver.vehicleType] : null},
+  ].filter((item): item is {label: string; value: string} => Boolean(item.value));
 
   return (
     <Screen backgroundColor={colors.primary} statusBarStyle="light-content" edges={['top', 'bottom']}>
@@ -48,7 +37,7 @@ export function RiderApprovedScreen({navigation}: Props) {
               <Icon name="user" size={28} color={colors.primary} />
             </View>
             <View style={styles.profileText}>
-              <Text style={styles.profileName}>Rahul Sharma</Text>
+              <Text style={styles.profileName}>{driverName(driver)}</Text>
               <View style={styles.profileStatusRow}>
                 <View style={styles.statusDot} />
                 <Text style={styles.profileStatus}>Active Rider</Text>
@@ -56,31 +45,20 @@ export function RiderApprovedScreen({navigation}: Props) {
             </View>
             <LogoMark width={32} height={32} />
           </View>
-          <View style={styles.detailsGrid}>
-            {DETAILS.map(item => (
-              <View key={item.label} style={styles.detailItem}>
-                <Text style={styles.detailLabel}>{item.label.toUpperCase()}</Text>
-                <Text style={styles.detailValue}>{item.value}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.checklistCard}>
-          <Text style={styles.checklistTitle}>Before your first delivery</Text>
-          {CHECKLIST.map((item, index) => (
-            <TouchableOpacity key={item} style={styles.checklistRow} activeOpacity={0.8} onPress={() => toggle(index)}>
-              <View style={[styles.checklistBox, checked[index] && styles.checklistBoxChecked]}>
-                {checked[index] && <Icon name="check" size={13} color={colors.white} />}
-              </View>
-              <Text style={[styles.checklistText, checked[index] && styles.checklistTextDone]}>{item}</Text>
-            </TouchableOpacity>
-          ))}
+          {details.length > 0 && (
+            <View style={styles.detailsGrid}>
+              {details.map(item => (
+                <View key={item.label} style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>{item.label.toUpperCase()}</Text>
+                  <Text style={styles.detailValue}>{item.value}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         <View style={styles.actions}>
           <Button label="Go to Dashboard" onPress={() => navigation.reset({index: 0, routes: [{name: 'LocationPermission'}]})} />
-          <Button label="Download Rider App" variant="secondary" />
         </View>
       </ScrollView>
     </Screen>
@@ -107,12 +85,5 @@ const styles = StyleSheet.create({
   detailItem: {width: '47%', backgroundColor: colors.background, borderRadius: radius.sm, padding: spacing.sm},
   detailLabel: {...typography.micro, fontSize: 10, color: colors.textMuted, letterSpacing: 0.4},
   detailValue: {...typography.labelSemibold, color: colors.textPrimary, marginTop: 2},
-  checklistCard: {backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.xl, padding: spacing.lg, gap: spacing.md},
-  checklistTitle: {...typography.labelSemibold, color: colors.textLabel},
-  checklistRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
-  checklistBox: {width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center'},
-  checklistBoxChecked: {backgroundColor: colors.primary, borderColor: colors.primary},
-  checklistText: {flex: 1, ...typography.label, color: colors.textLabel},
-  checklistTextDone: {color: colors.textMuted, textDecorationLine: 'line-through'},
   actions: {gap: spacing.sm},
 });

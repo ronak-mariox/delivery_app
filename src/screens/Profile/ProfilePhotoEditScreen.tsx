@@ -1,68 +1,138 @@
-import React from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useState} from 'react';
+import {Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Avatar, Icon} from '../../components';
+import {Avatar, Icon, IconBackButton, IconName} from '../../components';
 import {colors, radius, spacing, typography} from '../../theme';
+import {driverName, useDriverAuth} from '../../context/DriverAuthContext';
+import {api, getApiErrorMessage, resolveAssetUrl} from '../../services/api';
+import {initialsOf} from './driverDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfilePhotoEdit'>;
-
-const OPTIONS = [
-  {icon: 'camera' as const, title: 'Take New Photo', subtitle: 'Use your camera', tone: 'primary' as const},
-  {icon: 'image' as const, title: 'Choose from Gallery', subtitle: 'Upload from your device', tone: 'primary' as const},
-  {icon: 'trash' as const, title: 'Remove Photo', subtitle: 'Revert to initials', tone: 'danger' as const},
-];
 
 const GUIDELINES = ['Face clearly visible', 'Well-lit, no filters', 'White or plain background', 'No sunglasses'];
 
 export function ProfilePhotoEditScreen({navigation}: Props) {
+  const {driver, refreshDriver} = useDriverAuth();
+  const [localUri, setLocalUri] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const previewUri = localUri ?? resolveAssetUrl(driver?.avatarUrl);
+
+  const uploadAvatar = async (asset: {uri?: string; type?: string; fileName?: string}) => {
+    if (!asset.uri) {
+      return;
+    }
+    setLocalUri(asset.uri);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', {
+        uri: asset.uri,
+        type: asset.type || 'image/jpeg',
+        name: asset.fileName || 'avatar.jpg',
+      } as unknown as Blob);
+      await api.post<{avatarUrl: string}>('/driver/me/avatar', formData, {
+        headers: {'Content-Type': 'multipart/form-data'},
+      });
+      await refreshDriver();
+      setLocalUri(null);
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('Upload failed', getApiErrorMessage(err));
+      setLocalUri(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleTakePhoto = () => {
+    launchCamera({mediaType: 'photo', quality: 0.8}, response => {
+      if (response.didCancel) {
+        return;
+      }
+      if (response.errorMessage) {
+        Alert.alert('Camera error', response.errorMessage);
+        return;
+      }
+      const asset = response.assets?.[0];
+      if (asset) {
+        uploadAvatar(asset);
+      }
+    });
+  };
+
+  const handleChooseGallery = () => {
+    launchImageLibrary({mediaType: 'photo', quality: 0.8}, response => {
+      if (response.didCancel) {
+        return;
+      }
+      if (response.errorMessage) {
+        Alert.alert('Gallery error', response.errorMessage);
+        return;
+      }
+      const asset = response.assets?.[0];
+      if (asset) {
+        uploadAvatar(asset);
+      }
+    });
+  };
+
+  const options: {icon: IconName; title: string; subtitle: string; onPress: () => void}[] = [
+    {icon: 'camera', title: 'Take New Photo', subtitle: 'Use your camera', onPress: handleTakePhoto},
+    {icon: 'image', title: 'Choose from Gallery', subtitle: 'Upload from your device', onPress: handleChooseGallery},
+  ];
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Icon name="chevron-left" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <IconBackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Profile Photo</Text>
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <View style={styles.avatarWrap}>
-          <Avatar initials="RK" size={120} />
+          {previewUri ? (
+            <Image source={{uri: previewUri}} style={styles.avatarImage} />
+          ) : (
+            <Avatar initials={initialsOf(driverName(driver))} size={120} />
+          )}
           <View style={styles.cameraBadge}>
             <Icon name="camera" size={16} color={colors.white} />
           </View>
         </View>
+        <Text style={styles.caption}>{uploading ? 'Uploading photo…' : 'Your photo is shown to stores and customers during deliveries.'}</Text>
 
         <View style={styles.card}>
-          {OPTIONS.map((opt, index) => (
-            <TouchableOpacity key={opt.title} style={[styles.optionRow, index < OPTIONS.length - 1 && styles.optionRowBorder]} activeOpacity={0.7}>
-              <View style={[styles.optionIcon, opt.tone === 'danger' && styles.optionIconDanger]}>
-                <Icon name={opt.icon} size={20} color={opt.tone === 'danger' ? colors.danger : colors.primary} />
+          {options.map((opt, index) => (
+            <TouchableOpacity
+              key={opt.title}
+              style={[styles.optionRow, index < options.length - 1 && styles.optionRowBorder, uploading && styles.optionRowDisabled]}
+              activeOpacity={0.7}
+              disabled={uploading}
+              onPress={opt.onPress}>
+              <View style={styles.optionIcon}>
+                <Icon name={opt.icon} size={20} color={colors.primary} />
               </View>
-              <View>
-                <Text style={[styles.optionTitle, opt.tone === 'danger' && styles.optionTitleDanger]}>{opt.title}</Text>
+              <View style={styles.flex}>
+                <Text style={styles.optionTitle}>{opt.title}</Text>
                 <Text style={styles.optionSubtitle}>{opt.subtitle}</Text>
               </View>
+              <Icon name="chevron-right" size={16} color={colors.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
 
         <View style={styles.guidelinesCard}>
-          <Text style={styles.guidelinesTitle}>PHOTO GUIDELINES</Text>
-          {GUIDELINES.map(g => (
-            <View key={g} style={styles.guidelineRow}>
+          <Text style={styles.guidelinesTitle}>Photo Guidelines</Text>
+          {GUIDELINES.map(item => (
+            <View key={item} style={styles.guidelineRow}>
               <Icon name="check" size={14} color={colors.primary} />
-              <Text style={styles.guidelineText}>{g}</Text>
+              <Text style={styles.guidelineText}>{item}</Text>
             </View>
           ))}
         </View>
-
-        <TouchableOpacity style={styles.saveButton} activeOpacity={0.85} onPress={() => navigation.goBack()}>
-          <Text style={styles.saveButtonText}>Save Photo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.cancelButton} activeOpacity={0.85} onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -82,36 +152,33 @@ const styles = StyleSheet.create({
     paddingTop: 52,
     paddingBottom: spacing.md,
   },
-  headerTitle: {...typography.title, fontSize: 17, color: colors.textPrimary},
-  body: {padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxl},
-  avatarWrap: {alignSelf: 'center', marginTop: spacing.sm},
+  headerTitle: {...typography.title, fontSize: 17, color: colors.textPrimary, flex: 1},
+  body: {padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl, alignItems: 'stretch'},
+  avatarWrap: {width: 120, height: 120, alignSelf: 'center', marginTop: spacing.md},
+  avatarImage: {width: 120, height: 120, borderRadius: 60, backgroundColor: colors.primarySurfaceAlt},
   cameraBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    right: 2,
+    bottom: 2,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.primary,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  caption: {...typography.label, color: colors.textSecondary, textAlign: 'center'},
   card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, overflow: 'hidden'},
-  optionRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg},
+  optionRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
   optionRowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
-  optionIcon: {width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.primarySurface, alignItems: 'center', justifyContent: 'center'},
-  optionIconDanger: {backgroundColor: '#FEF3F2'},
+  optionRowDisabled: {opacity: 0.5},
+  optionIcon: {width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.primarySurface, alignItems: 'center', justifyContent: 'center'},
   optionTitle: {...typography.bodySemibold, fontSize: 14, color: colors.textPrimary},
-  optionTitleDanger: {color: colors.danger},
-  optionSubtitle: {...typography.caption, color: colors.textSecondary, marginTop: 1},
-  guidelinesCard: {backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm},
-  guidelinesTitle: {...typography.captionSemibold, fontSize: 12, color: colors.textSecondary, letterSpacing: 0.6},
+  optionSubtitle: {...typography.caption, color: colors.textSecondary, marginTop: 2},
+  guidelinesCard: {backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm},
+  guidelinesTitle: {...typography.labelSemibold, color: colors.textLabel},
   guidelineRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
-  guidelineText: {...typography.label, fontSize: 13, color: colors.textLabel},
-  saveButton: {backgroundColor: colors.primary, borderRadius: radius.lg, height: 50, alignItems: 'center', justifyContent: 'center'},
-  saveButtonText: {...typography.bodySemibold, fontSize: 15, color: colors.white},
-  cancelButton: {backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg, height: 50, alignItems: 'center', justifyContent: 'center'},
-  cancelButtonText: {...typography.bodyMedium, fontSize: 15, color: colors.textSecondary},
+  guidelineText: {...typography.caption, color: colors.textSecondary, flex: 1},
 });

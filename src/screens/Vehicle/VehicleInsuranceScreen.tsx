@@ -1,65 +1,62 @@
 import React from 'react';
-import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
-import {Icon} from '../../components';
-import {colors, radius, spacing, typography} from '../../theme';
+import {Badge, EmptyState, IconBackButton, InfoBanner} from '../../components';
+import {colors, radius, shadows, spacing, typography} from '../../theme';
+import {useDriverAuth} from '../../context/DriverAuthContext';
+import {ContactSupport} from '../Profile/ContactSupport';
+import {documentUrl, formatDate, isExpired, kycBadge} from '../Profile/driverDisplay';
+import {DocumentImageCard} from '../Documents/DocumentImageCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleInsurance'>;
 
 export function VehicleInsuranceScreen({navigation}: Props) {
+  const {driver} = useDriverAuth();
+  const insurance = driver?.insuranceDetails;
+  const insuranceUrl = documentUrl(driver, 'insurance');
+  const expired = isExpired(insurance?.validUntil);
+  const kyc = kycBadge(driver?.kycStatus);
+
+  const rows = insurance
+    ? [
+        {label: 'Insurance Type', value: insurance.insuranceType},
+        {label: 'Policy Number', value: insurance.policyNumber},
+        {label: 'Valid From', value: formatDate(insurance.validFrom)},
+        {label: 'Valid Until', value: formatDate(insurance.validUntil)},
+        {label: 'Vehicle', value: driver?.vehicleDetails?.registrationNumber || '—'},
+      ]
+    : [];
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Icon name="chevron-left" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Insurance</Text>
+        <IconBackButton onPress={() => navigation.goBack()} />
+        <Text style={styles.headerTitle}>Vehicle Insurance</Text>
+        <Badge label={expired ? 'Expired' : kyc.label} tone={expired ? 'warning' : kyc.tone} />
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <View style={styles.policyCard}>
-          <View style={styles.policyTopRow}>
-            <View style={styles.shieldIcon}>
-              <Icon name="shield" size={28} color={colors.warning} />
-            </View>
-            <View style={styles.expiringPill}>
-              <Text style={styles.expiringPillText}>EXPIRING SOON</Text>
-            </View>
-          </View>
-          <Text style={styles.policyLabel}>Policy Number</Text>
-          <Text style={styles.policyNumber}>MBI-2024-KA01AB1234</Text>
-          <View style={styles.policyDetailsRow}>
-            <View>
-              <Text style={styles.detailLabel}>Provider</Text>
-              <Text style={styles.detailValue}>New India Assurance</Text>
-            </View>
-            <View>
-              <Text style={styles.detailLabel}>Valid Period</Text>
-              <Text style={styles.detailValue}>Sep 14, 2024 – Sep 13, 2026</Text>
-            </View>
-          </View>
-        </View>
+        {expired ? (
+          <InfoBanner tone="warning" icon="alert-triangle" title="Policy expired" description={`This policy expired on ${formatDate(insurance?.validUntil)}. Contact support to update it.`} />
+        ) : null}
 
-        <TouchableOpacity style={styles.warningBanner} activeOpacity={0.8} onPress={() => navigation.navigate('StateWarningInsurance')}>
-          <Icon name="alert-triangle" size={16} color={colors.warning} />
-          <Text style={styles.warningText}>
-            Your insurance expires <Text style={styles.warningBold}>Sep 13, 2026</Text>. Upload new insurance before then to avoid delivery
-            suspension.
-          </Text>
-        </TouchableOpacity>
+        <DocumentImageCard docKey="insurance" url={insuranceUrl} onPress={insuranceUrl ? () => navigation.navigate('DocumentPreview', {docKey: 'insurance'}) : undefined} />
 
-        <TouchableOpacity style={styles.uploadButton} activeOpacity={0.85} onPress={() => navigation.navigate('VehicleVerificationStatus')}>
-          <Icon name="upload" size={16} color={colors.white} />
-          <Text style={styles.uploadButtonText}>Upload New Insurance</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85}>
-          <Text style={styles.outlineButtonText}>View Current Document</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.reminderRow} activeOpacity={0.7}>
-          <Icon name="bell" size={16} color={colors.textSecondary} />
-          <Text style={styles.reminderText}>Set Reminder</Text>
-        </TouchableOpacity>
+        {insurance ? (
+          <View style={styles.card}>
+            {rows.map((row, index) => (
+              <View key={row.label} style={[styles.row, index < rows.length - 1 && styles.rowBorder]}>
+                <Text style={styles.rowLabel}>{row.label}</Text>
+                <Text style={styles.rowValue}>{row.value || '—'}</Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <EmptyState icon="shield" title="No insurance details" description="Insurance details were not captured during registration." />
+        )}
+
+        <ContactSupport description="To update your insurance policy, contact support." />
       </ScrollView>
     </View>
   );
@@ -79,25 +76,11 @@ const styles = StyleSheet.create({
     paddingTop: 52,
     paddingBottom: spacing.md,
   },
-  headerTitle: {...typography.title, fontSize: 17, color: colors.textPrimary},
+  headerTitle: {...typography.title, fontSize: 17, color: colors.textPrimary, flex: 1},
   body: {padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl},
-  policyCard: {backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.warning, borderRadius: radius.xxl, padding: spacing.xl, gap: spacing.md},
-  policyTopRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'},
-  shieldIcon: {width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.warningSurface, alignItems: 'center', justifyContent: 'center'},
-  expiringPill: {backgroundColor: colors.warningSurface, borderWidth: 1, borderColor: colors.warning, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 5},
-  expiringPillText: {...typography.captionSemibold, fontSize: 11, color: colors.warning},
-  policyLabel: {...typography.label, fontSize: 13, color: colors.textSecondary},
-  policyNumber: {...typography.h4, fontSize: 16, color: colors.textPrimary, marginTop: 2},
-  policyDetailsRow: {flexDirection: 'row', justifyContent: 'space-between'},
-  detailLabel: {...typography.caption, fontSize: 11, color: colors.textMuted},
-  detailValue: {...typography.label, fontSize: 13, color: colors.textPrimary, marginTop: 2},
-  warningBanner: {flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.warningSurface, borderWidth: 1, borderColor: colors.warning, borderRadius: radius.lg, padding: spacing.md},
-  warningText: {...typography.label, fontSize: 13, color: colors.warningText, flex: 1},
-  warningBold: {...typography.bodyBold, fontSize: 13, color: colors.warningText},
-  uploadButton: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.lg, height: 50, marginTop: spacing.sm},
-  uploadButtonText: {...typography.bodySemibold, fontSize: 15, color: colors.white},
-  outlineButton: {borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg, height: 48, alignItems: 'center', justifyContent: 'center'},
-  outlineButtonText: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary},
-  reminderRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, height: 48},
-  reminderText: {...typography.bodyMedium, fontSize: 14, color: colors.textSecondary},
+  card: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, overflow: 'hidden', ...shadows.sm},
+  row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
+  rowBorder: {borderBottomWidth: 1, borderBottomColor: '#F3F4F6'},
+  rowLabel: {...typography.label, fontSize: 13, color: colors.textSecondary},
+  rowValue: {...typography.bodyMedium, fontSize: 14, color: colors.textPrimary, flexShrink: 1, textAlign: 'right'},
 });
